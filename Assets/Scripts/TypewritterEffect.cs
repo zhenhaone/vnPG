@@ -8,6 +8,7 @@ public class TypewritterEffect : MonoBehaviour
 {
     public TextMeshProUGUI textDisplay;
     public float waitingSeconds = Constants.DEFAULT_WAITING_SECONDS;
+    public float typingSpeed = Constants.DEFAULT_TYPING_SPEED;
 
     private Coroutine typingCoroutine;
     private bool isTyping;

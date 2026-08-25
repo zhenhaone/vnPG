@@ -25,12 +25,21 @@ public class VNManager : MonoBehaviour
 
     public GameObject bottomButtons;
     public Button autoButton;
+    public Button skipButton;
+    public Button saveButton;
+    public Button loadButton;
 
     private string storyPath = Constants.STORY_PATH;
     private string defaultStoryFileName = Constants.DEFAULT_STORY_FILE_NAME;
     private string excelFileExtension=Constants.EXCEL_FILE_EXTENSION;
     private List<ExcelReader.ExcelData> storyData;
-    private int currentLine = Constants.DEFAULT_START_LINE;
+    private int currentLine;
+    private string currentStoryFileName;
+
+    private bool isAutoPlay = false;
+    private bool isSkip = false;
+    private int maxReachedLineIndex = 0;
+    private Dictionary<string, int> globalMaxReachedLineIndices = new Dictionary<string, int>();
     
     
 
@@ -38,7 +47,7 @@ public class VNManager : MonoBehaviour
     void Start()
     {
         InitializeAndLoadStory(defaultStoryFileName);
-        
+        bottomButtonAddListener();
     }
 
     // Update is called once per frame
@@ -48,6 +57,7 @@ public class VNManager : MonoBehaviour
         { 
             if (!IsHittingBottomButtons())
             {
+                Debug.Log("Hit");
                 DisplayNextLine();
             }
             
@@ -55,9 +65,17 @@ public class VNManager : MonoBehaviour
 
     }
 
+    void bottomButtonAddListener()
+    {
+        autoButton.onClick.AddListener(OnAutoButtonClick);
+        skipButton.onClick.AddListener(OnSkipButtonClick);
+        saveButton.onClick.AddListener(OnSaveButtonClick);
+        loadButton.onClick.AddListener(OnLoadButtonClick);
+    }
+
     void InitializeAndLoadStory(string fileName)
     {
-        Debug.Log(fileName);
+        //Debug.Log(fileName);
         Initialize();
         LoadStoryFromFile(storyPath + fileName);
         DisplayNextLine();
@@ -71,33 +89,54 @@ public class VNManager : MonoBehaviour
         CharactorImage1.gameObject.SetActive(false);
         CharactorImage2.gameObject.SetActive(false);
         choicePanel.SetActive(false);
-        autoButton.onClick.AddListener(OnAutoButtonClick);
+        //autoButton.onClick.AddListener(OnAutoButtonClick);
     }
 
     void LoadStoryFromFile(string fileName)
     {
+        currentStoryFileName = fileName;
         var path = fileName + excelFileExtension;
         storyData = ExcelReader.ReadExcel(path);
         if(storyData==null||storyData.Count==0)
         {
             Debug.LogError("No data found in the file");
         }
+        if(globalMaxReachedLineIndices.ContainsKey(currentStoryFileName))
+        {
+            maxReachedLineIndex=globalMaxReachedLineIndices[currentStoryFileName];
+        }
+        else
+        {
+            maxReachedLineIndex = 0;
+            globalMaxReachedLineIndices[currentStoryFileName] = maxReachedLineIndex;
+        }
     }
 
     void DisplayNextLine()
     {
-        if(currentLine==storyData.Count-1)
+        if(currentLine>maxReachedLineIndex)
         {
+            maxReachedLineIndex = currentLine;
+            globalMaxReachedLineIndices[currentStoryFileName] = maxReachedLineIndex;
+        }
+        if(currentLine>=storyData.Count-1)
+        {
+            if(isAutoPlay)
+            {
+                isAutoPlay = false;
+                UpdateButtonImage(Constants.AUTO_OFF,autoButton);
+            }
+
             if (storyData[currentLine].speakerName==Constants.END_OD_STORY)
             {
                 Debug.Log(Constants.END_OD_STORY);
-                return;
             }
             if (storyData[currentLine].speakerName==Constants.CHOICE)
             {
                 ShowChoices();
-                return;
+                
             }
+            return;
         }
         if(typewritterEffect.IsTyping())
         {
@@ -270,7 +309,7 @@ public class VNManager : MonoBehaviour
             );
     }
 
-    private bool isAutoPlay = false;
+    //private bool isAutoPlay = false;
 
     void OnAutoButtonClick()
     {
@@ -280,6 +319,45 @@ public class VNManager : MonoBehaviour
         {
             StartCoroutine(StartAutoPlay());
         }
+    }
+
+    void OnSkipButtonClick()
+    {
+        Debug.Log("Click");
+        if(!isSkip&&CanSkip())
+        {
+            StartSkip();
+        }
+        else if(isSkip)
+        {
+            StopCoroutine(SkipToMaxReachedLine());
+            EndSkip();
+        }
+    }
+
+    void OnSaveButtonClick()
+    {
+        SLManager.Instance.ShowSaveLoadUI(true);
+    }
+
+    void OnLoadButtonClick()
+    {
+        SLManager.Instance.ShowSaveLoadUI(false);
+    }
+
+    bool CanSkip()
+    {
+        //Debug.Log(currentLine+" "+ maxReachedLineIndex);
+        return currentLine < maxReachedLineIndex;
+    }
+
+    void StartSkip()
+    {
+        Debug.Log("StartSkip");
+        isSkip = true;
+        UpdateButtonImage(Constants.SKIP_ON,skipButton);
+        typewritterEffect.typingSpeed = Constants.SKIP_MODE_TYPING_SPEED;
+        StartCoroutine(SkipToMaxReachedLine());
     }
 
     void UpdateButtonImage(string imageFileName,Button button)
@@ -296,7 +374,30 @@ public class VNManager : MonoBehaviour
             {
                 DisplayNextLine();
             }
-            yield return new WaitForSeconds(Constants.DEFAULT_WAITING_SECONDS);
+            yield return new WaitForSeconds(Constants.DEFAULT_AUTO_WAITING_SECONDS);
         }
+    }
+
+    private IEnumerator SkipToMaxReachedLine()
+    {
+        while(isSkip)
+        {
+            if (CanSkip())
+            {
+                DisplayThisLine();
+            }
+            else
+            {
+                EndSkip();
+            }
+            yield return new WaitForSeconds(Constants.DEFAULT_SKIP_WAITTING_SECONDS);
+        }
+    }
+
+    void EndSkip()
+    {
+        isSkip = false;
+        typewritterEffect.typingSpeed = Constants.DEFAULT_TYPING_SPEED;
+        UpdateButtonImage(Constants.SKIP_OFF,skipButton);
     }
 }
