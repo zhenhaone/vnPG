@@ -51,4 +51,17 @@ public class Constants : MonoBehaviour
     public static string SAVE_GAME = "save_game";
     public static string LOAD_GAME = "load_game";
     public static string EMPTY_SLOT = "empty_slot";
+
+    public static string CAMERA_NOT_FOUND = "Main camera not found";
+    public static string SAVE_FILE_PATH = "saves";
+    public static string SAVE_FILE_EXTENSION = ".json";
+
+    public static string X = "x";
+
+    public static string GOTO = "goto";
+    public static string APPEAR_AT_INSTANTLY = "appearAtInstantly";
+    public static string NEW_STORY_FILE_NAME = "11";
+    public static int MAX_LENGTH = 50;
+
+    public static char ChoiceDelimeter = '\n';
 }

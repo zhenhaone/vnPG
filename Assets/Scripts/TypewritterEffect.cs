@@ -8,13 +8,14 @@ public class TypewritterEffect : MonoBehaviour
 {
     public TextMeshProUGUI textDisplay;
     public float waitingSeconds = Constants.DEFAULT_WAITING_SECONDS;
-    public float typingSpeed = Constants.DEFAULT_TYPING_SPEED;
+    private float typingSpeed = Constants.DEFAULT_TYPING_SPEED;
 
     private Coroutine typingCoroutine;
     private bool isTyping;
 
-    public void StartTyping(string text)
+    public void StartTyping(string text,float speed)
     {
+        typingSpeed = speed;
         if(typingCoroutine!=null)
         {
             StopCoroutine(typingCoroutine);

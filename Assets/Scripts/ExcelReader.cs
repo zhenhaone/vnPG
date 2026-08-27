@@ -17,10 +17,18 @@ public class ExcelReader : MonoBehaviour
         public string backgroundMusicFileName;
         public string CoordinateX1;
         public string CoordinateX2;
+        public string CoordinateX3;
         public string charactor1Action;
         public string charactor2Action;
+        public string charactor3Action;
         public string charactor1ImageFileName;
         public string charactor2ImageFileName;
+        public string charactor3ImageFileName;
+        public string lastBackgroundImage;
+        public string lastBackgroundMusic;
+        public string lastCoordinate1;
+        public string lastCoordinate2;
+        public string lastCoordinate3;
     }
 
     public static List<ExcelData> ReadExcel(string filePath)
@@ -48,6 +56,14 @@ public class ExcelReader : MonoBehaviour
                         data.charactor2Action= reader.IsDBNull(9) ? string.Empty : reader.GetValue(9)?.ToString();
                         data.CoordinateX2 = reader.IsDBNull(10) ? string.Empty : reader.GetValue(10)?.ToString();
                         data.charactor2ImageFileName= reader.IsDBNull(11) ? string.Empty : reader.GetValue(11)?.ToString();
+                        data.lastBackgroundImage = reader.IsDBNull(12) ? string.Empty : reader.GetValue(12)?.ToString();
+                        data.lastBackgroundMusic = reader.IsDBNull(13) ? string.Empty : reader.GetValue(13)?.ToString();
+                        data.lastCoordinate1 = reader.IsDBNull(14) ? string.Empty : reader.GetValue(14)?.ToString();
+                        data.lastCoordinate2 = reader.IsDBNull(15) ? string.Empty : reader.GetValue(15)?.ToString();
+                        data.charactor3ImageFileName = reader.IsDBNull(16) ? string.Empty : reader.GetValue(16)?.ToString();
+                        data.charactor3Action = reader.IsDBNull(17) ? string.Empty : reader.GetValue(17)?.ToString();
+                        data.CoordinateX3 = reader.IsDBNull(18) ? string.Empty : reader.GetValue(18)?.ToString();
+                        data.lastCoordinate3 = reader.IsDBNull(19) ? string.Empty : reader.GetValue(19)?.ToString();
                         excelData.Add(data);
                     }
                 } while (reader.NextResult());
