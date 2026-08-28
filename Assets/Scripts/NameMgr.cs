@@ -39,7 +39,7 @@ public class NameMgr : MonoBehaviour
                 image.sprite = sprites[2];
                 break;
             case "u":
-                color.a = 1f; // 0完全透明，1完全不透明
+                color.a = 0f; // 0完全透明，1完全不透明
                 image.color = color;
                 image.sprite = sprites[3];
                 break;

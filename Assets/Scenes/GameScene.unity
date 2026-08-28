@@ -167,9 +167,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   backgroundSprite: {fileID: 21300000, guid: 9156bcc9f1d18034687c7237e247ad69, type: 3}
-  arthurSprite: {fileID: 21300000, guid: cbc5d8e449d6ac845ab77e79dc285ec5, type: 3}
+  arthurSprite: {fileID: 21300000, guid: 34522073dd528ab469eb17a7b19a7033, type: 3}
   charlesSprite: {fileID: 21300000, guid: 8c69d3d0662fc4242b2539d3e2aee52c, type: 3}
-  beatriceSprite: {fileID: 21300000, guid: 961b7a1346df92a43a31c497ed2dcbea, type: 3}
+  beatriceSprite: {fileID: 21300000, guid: 4608e15e43450c141ac03b2b36c157c3, type: 3}
   evidenceSprites: []
   dialoguePanelUISprite: {fileID: 21300000, guid: c49b9f76026d7104fa07d1e44af232bc, type: 3}
   evidenceCardUISprite: {fileID: 21300000, guid: 9efbbacf37a177d4bad483a1da4eb111, type: 3}
@@ -177,6 +177,9 @@ MonoBehaviour:
   buttonUISprite: {fileID: 21300000, guid: 7a9ea2a635d36f444b4b8904c54e0b34, type: 3}
   recordPanelUISprite: {fileID: 21300000, guid: 6d1ad5852a99dfc4e9569443aa64483f, type: 3}
   resultPanelUISprite: {fileID: 21300000, guid: 6d1ad5852a99dfc4e9569443aa64483f, type: 3}
+  tensionBarSprite: {fileID: 21300000, guid: 6b51185afd3f29e4784e6c1681f737c2, type: 3}
+  gunSprite: {fileID: 21300000, guid: 9cd9ce9de510eb243897d1cce2191e1d, type: 3}
+  guiltSprite: {fileID: 21300000, guid: 3a152db60971d694a86d970e036f2641, type: 3}
   selectedEvidenceTint: {r: 1, g: 1, b: 1, a: 1}
   interrogationMusic: {fileID: 0}
   clickSound: {fileID: 0}

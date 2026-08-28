@@ -229,7 +229,7 @@ public class VNManager : MonoBehaviour
     #region չʾ
     void DisplayNextLine()
     {
-        
+        Debug.Log("1");
         if(currentLine>maxReachedLineIndex)
         {
             maxReachedLineIndex = currentLine;
@@ -237,15 +237,17 @@ public class VNManager : MonoBehaviour
         }
         if(currentLine>=storyData.Count-1)
         {
-            if(isAutoPlay)
+            Debug.Log("2");
+            if (isAutoPlay)
             {
                 isAutoPlay = false;
                 UpdateButtonImage(Constants.AUTO_OFF,autoButton);
             }
+            Debug.Log(storyData[currentLine].speakerName);
 
             if (storyData[currentLine].speakerName==Constants.END_OD_STORY)
             {
-                //Debug.Log(Constants.END_OD_STORY);
+                Debug.Log(Constants.END_OD_STORY);
                 SceneManager.LoadScene("GameScene");
             }
             if (storyData[currentLine].speakerName==Constants.CHOICE)

@@ -25,6 +25,14 @@ namespace NoVerity.GameScene
         public Sprite recordPanelUISprite;
         public Sprite resultPanelUISprite;
 
+        [Header("Gameplay Art Resources")]
+        [Tooltip("Displayed behind the tension number.")]
+        public Sprite tensionBarSprite;
+        [Tooltip("Used as the visual for both revolver buttons.")]
+        public Sprite gunSprite;
+        [Tooltip("Displayed like a guilty stamp after a successful accusation.")]
+        public Sprite guiltSprite;
+
         [Header("Evidence Selection Effect")]
         [Tooltip("Tint applied to a selected evidence card. Lower RGB values produce a darker card.")]
         public Color selectedEvidenceTint = new Color(0.58f, 0.58f, 0.58f, 1f);
@@ -60,7 +68,7 @@ namespace NoVerity.GameScene
         private TMP_FontAsset uiFont;
 
         private TMP_Text titleText, tensionText, roundText, dialogueText, hintText, recordText;
-        private Image portraitImage, backgroundImage;
+        private Image portraitImage, backgroundImage, tensionBarImage, guiltImage;
         private Transform evidenceRoot;
         private Button confirmButton, emptyGunButton, liveGunButton;
         private GameObject interrogationPanel, recordPanel, resultPanel;
@@ -267,6 +275,7 @@ namespace NoVerity.GameScene
             interrogationPanel.SetActive(false);
             recordPanel.SetActive(false);
             resultPanel.SetActive(true);
+            guiltImage.gameObject.SetActive(false);
             continueButton.gameObject.SetActive(false);
             resultText.text = "<size=130%><b>Final Accusation</b></size>\n\nAn accusation requires a true motive statement, a true method statement, and one questioned case supplement.";
             accuseA.interactable = CanAccuse(SuspectId.Arthur);
@@ -302,6 +311,7 @@ namespace NoVerity.GameScene
             resultPanel.SetActive(true);
             resultText.text = $"<size=150%><b>{ending}</b></size>\n\n{body}\n\nThe rain was just as heavy that night. Clara crawled out of the pit and begged you for help.\nYou did not save her. You struck the final blow and planted evidence against the other three.\n\n<b>No Verity -- there is no truth, because you constructed it from the beginning.</b>";
             SetAccusationButtons(false);
+            guiltImage.gameObject.SetActive(success && guiltSprite != null);
             pendingSceneName = success ? successSceneName : failureSceneName;
             continueButton.gameObject.SetActive(true);
         }
@@ -403,6 +413,11 @@ namespace NoVerity.GameScene
             backgroundImage.sprite = backgroundSprite; backgroundImage.color = backgroundSprite ? Color.white : new Color32(25,20,20,255);
             interrogationPanel = MakePanel(canvasGO.transform, "InterrogationPanel", Vector2.zero, Vector2.one, Color.clear);
             titleText = MakeText(interrogationPanel.transform,"SuspectTitle",new Vector2(.03f,.82f),new Vector2(.35f,.97f),30,TextAlignmentOptions.Left);
+            tensionBarImage = MakeImage(interrogationPanel.transform,"TensionBar",new Vector2(.67f,.87f),new Vector2(.96f,.97f));
+            tensionBarImage.sprite = tensionBarSprite;
+            tensionBarImage.color = tensionBarSprite != null ? Color.white : Color.clear;
+            tensionBarImage.type = Image.Type.Simple;
+            tensionBarImage.raycastTarget = false;
             tensionText = MakeText(interrogationPanel.transform,"Tension",new Vector2(.68f,.88f),new Vector2(.95f,.96f),28,TextAlignmentOptions.Right);
             roundText = MakeText(interrogationPanel.transform,"Round",new Vector2(.68f,.82f),new Vector2(.95f,.88f),22,TextAlignmentOptions.Right);
             portraitImage = MakeImage(interrogationPanel.transform,"Portrait",new Vector2(-0.08f,0.03f),new Vector2(0.43f,0.92f)); portraitImage.preserveAspect=true;
@@ -415,6 +430,8 @@ namespace NoVerity.GameScene
             confirmButton=MakeButton(interrogationPanel.transform,"Present Evidence",new Vector2(260,60)); Anchor(confirmButton.GetComponent<RectTransform>(),new Vector2(.78f,.04f),new Vector2(.94f,.12f)); confirmButton.onClick.AddListener(ConfirmEvidence);
             emptyGunButton=MakeButton(interrogationPanel.transform,"Revolver: Blank (-10)",new Vector2(220,55)); Anchor(emptyGunButton.GetComponent<RectTransform>(),new Vector2(.37f,.04f),new Vector2(.50f,.12f)); emptyGunButton.onClick.AddListener(()=>UseRevolver(false));
             liveGunButton=MakeButton(interrogationPanel.transform,"Revolver: Live (+10)",new Vector2(220,55)); Anchor(liveGunButton.GetComponent<RectTransform>(),new Vector2(.52f,.04f),new Vector2(.65f,.12f)); liveGunButton.onClick.AddListener(()=>UseRevolver(true));
+            ApplyGunSprite(emptyGunButton);
+            ApplyGunSprite(liveGunButton);
 
             recordPanel=MakePanel(canvasGO.transform,"RecordPanel",new Vector2(.03f,.05f),new Vector2(.34f,.78f),new Color32(35,28,25,245));
             ApplyUISprite(recordPanel.GetComponent<Image>(), recordPanelUISprite, new Color32(35,28,25,245));
@@ -424,6 +441,13 @@ namespace NoVerity.GameScene
             resultPanel=MakePanel(canvasGO.transform,"ResultPanel",new Vector2(.2f,.14f),new Vector2(.8f,.86f),dark);
             ApplyUISprite(resultPanel.GetComponent<Image>(), resultPanelUISprite, dark);
             resultText=MakeText(resultPanel.transform,"ResultText",new Vector2(.08f,.34f),new Vector2(.92f,.92f),26,TextAlignmentOptions.TopLeft);
+            guiltImage=MakeImage(resultPanel.transform,"GuiltStamp",new Vector2(.58f,.48f),new Vector2(.90f,.82f));
+            guiltImage.sprite=guiltSprite;
+            guiltImage.color=guiltSprite!=null?Color.white:Color.clear;
+            guiltImage.type=Image.Type.Simple;
+            guiltImage.preserveAspect=true;
+            guiltImage.raycastTarget=false;
+            guiltImage.gameObject.SetActive(false);
             accuseA=MakeButton(resultPanel.transform,"Accuse Arthur",new Vector2(220,60)); Anchor(accuseA.GetComponent<RectTransform>(),new Vector2(.08f,.16f),new Vector2(.31f,.27f)); accuseA.onClick.AddListener(()=>Accuse(SuspectId.Arthur));
             accuseC=MakeButton(resultPanel.transform,"Accuse Charles",new Vector2(220,60)); Anchor(accuseC.GetComponent<RectTransform>(),new Vector2(.385f,.16f),new Vector2(.615f,.27f)); accuseC.onClick.AddListener(()=>Accuse(SuspectId.Charles));
             accuseB=MakeButton(resultPanel.transform,"Accuse Beatrice",new Vector2(220,60)); Anchor(accuseB.GetComponent<RectTransform>(),new Vector2(.69f,.16f),new Vector2(.92f,.27f)); accuseB.onClick.AddListener(()=>Accuse(SuspectId.Beatrice));
@@ -440,6 +464,14 @@ namespace NoVerity.GameScene
         { var go=new GameObject("Button",typeof(RectTransform),typeof(Image),typeof(Button),typeof(LayoutElement)); go.transform.SetParent(parent,false); ApplyUISprite(go.GetComponent<Image>(),buttonUISprite,brown); go.GetComponent<RectTransform>().sizeDelta=size; var le=go.GetComponent<LayoutElement>(); le.preferredWidth=size.x; le.preferredHeight=size.y; var label=MakeText(go.transform,"Label",new Vector2(.06f,.08f),new Vector2(.94f,.92f),19,TextAlignmentOptions.Center); label.text=text; label.raycastTarget=false; return go.GetComponent<Button>(); }
         private void ApplyUISprite(Image image,Sprite sprite,Color fallback)
         { image.sprite=sprite; image.type=sprite!=null?Image.Type.Sliced:Image.Type.Simple; image.color=sprite!=null?Color.white:fallback; }
+        private void ApplyGunSprite(Button button)
+        {
+            if(gunSprite==null) return;
+            button.image.sprite=gunSprite;
+            button.image.type=Image.Type.Simple;
+            button.image.preserveAspect=true;
+            button.image.color=Color.white;
+        }
         private void Anchor(RectTransform r,Vector2 min,Vector2 max)
         { r.anchorMin=min; r.anchorMax=max; r.offsetMin=Vector2.zero; r.offsetMax=Vector2.zero; }
         private Sprite GetPortrait(SuspectId id) => id==SuspectId.Arthur?arthurSprite:id==SuspectId.Charles?charlesSprite:beatriceSprite;
