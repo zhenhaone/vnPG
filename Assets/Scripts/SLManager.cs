@@ -77,6 +77,7 @@ public class SLManager : MonoBehaviour
             }
             else
             {
+                //Debug.Log("no");
                 saveLoadButtons[i].gameObject.SetActive(false);
             }
         }
@@ -143,6 +144,7 @@ public class SLManager : MonoBehaviour
                 textComponents[0].text = null;
                 textComponents[1].text = slotText;
                 saveLoadButtons[i].GetComponentInChildren<RawImage>().texture = null;
+                
             }
             else
             {
@@ -185,16 +187,29 @@ public class SLManager : MonoBehaviour
             var saveData = JsonConvert.DeserializeObject<VNManager.SaveData>(json);
             if(saveData.savedScreenshotData!=null)
             {
+                Debug.Log("Have");
+                
+                //Debug.Log(saveData.savedScreenshotData);
                 Texture2D screenshot = new Texture2D(2,2);
                 screenshot.LoadImage(saveData.savedScreenshotData);
                 button.GetComponentInChildren<RawImage>().texture = screenshot;
+                Color color = button.GetComponentInChildren<RawImage>().color;
+                color.a = 1;
+                button.GetComponentInChildren<RawImage>().color = color;
             }
-            if(saveData.savedSpeakingContent != null)
+            
+            if (saveData.savedSpeakingContent != null)
             {
                 var textComponents = button.GetComponentsInChildren<TextMeshProUGUI>();
-                textComponents[0].text = saveData.savedSpeakingContent;
+                //textComponents[0].text = saveData.savedSpeakingContent;
                 textComponents[1].text = File.GetLastWriteTime(savePath).ToString("G");
             }
+        }
+        else
+        {
+            Color color = button.GetComponentInChildren<RawImage>().color;
+            color.a = 0;
+            button.GetComponentInChildren<RawImage>().color = color;
         }
     }
 

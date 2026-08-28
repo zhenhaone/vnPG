@@ -33,6 +33,9 @@ public class MenuManager : MonoBehaviour
     void Start()
     {
         MenuButtonAddListener();
+        startButton.image.alphaHitTestMinimumThreshold = 0.1f;
+        continueButton.image.alphaHitTestMinimumThreshold = 0.1f;
+        quitButton.image.alphaHitTestMinimumThreshold = 0.1f;
     }
 
     void MenuButtonAddListener()

@@ -10,6 +10,8 @@ using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class VNManager : MonoBehaviour
 {
@@ -243,7 +245,8 @@ public class VNManager : MonoBehaviour
 
             if (storyData[currentLine].speakerName==Constants.END_OD_STORY)
             {
-                Debug.Log(Constants.END_OD_STORY);
+                //Debug.Log(Constants.END_OD_STORY);
+                SceneManager.LoadScene("GameScene");
             }
             if (storyData[currentLine].speakerName==Constants.CHOICE)
             {
@@ -498,7 +501,7 @@ public class VNManager : MonoBehaviour
     void OnAutoButtonClick()
     {
         isAutoPlay = !isAutoPlay;
-        UpdateButtonImage((isAutoPlay?Constants.AUTO_ON:Constants.AUTO_OFF),autoButton);
+        UpdateButtonImage((isAutoPlay?Constants.AUTO_OFF:Constants.AUTO_ON),autoButton);
         if(isAutoPlay)
         {
             StartCoroutine(StartAutoPlay());

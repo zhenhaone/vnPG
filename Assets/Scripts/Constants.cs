@@ -18,8 +18,8 @@ public class Constants : MonoBehaviour
     public static float DEFAULT_TYPING_SPEED = 0.05f;
     public static float SKIP_MODE_TYPING_SPEED = 0.01f;
 
-    public static string AUTO_ON = "1";
-    public static string AUTO_OFF = "2";
+    public static string AUTO_ON = "auto";
+    public static string AUTO_OFF = "stop";
     public static float DEFAULT_AUTO_WAITING_SECONDS = 0.1f;
 
     public static string SKIP_ON = "1";
