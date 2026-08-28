@@ -33,7 +33,7 @@ public class ChoiceManager : MonoBehaviour
         Debug.Log("showchoice");
         foreach(Transform child in choiceButtonContainer)
         {
-            Destroy(child.gameObject);
+            Destroy(child.gameObject); 
 
         }
         for(int i=0;i<options.Count;i++)

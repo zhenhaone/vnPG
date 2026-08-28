@@ -10,6 +10,7 @@ public class HistoryManager : MonoBehaviour
     public GameObject historyItemPrefab;
     public GameObject historyScrollView;
     public Button closeButton;
+    public GameObject historyPanel;
 
     private LinkedList<string> historyRecords;
 
@@ -29,7 +30,7 @@ public class HistoryManager : MonoBehaviour
 
     private void Start()
     {
-        historyScrollView.SetActive(false);
+        historyPanel.SetActive(false);
         closeButton.onClick.AddListener(CloseHistory);
     }
 
@@ -48,13 +49,13 @@ public class HistoryManager : MonoBehaviour
         }
 
         historyContent.GetComponent<RectTransform>().localPosition = Vector3.zero;
-        historyScrollView.SetActive(true);
+        historyPanel.SetActive(true);
 
     }
 
     public void CloseHistory()
     {
-        historyScrollView?.SetActive(false);
+        historyPanel?.SetActive(false);
     }
 
     private void AddHistoryItem(string text)

@@ -291,7 +291,7 @@ public class VNManager : MonoBehaviour
             Debug.Log("NULL");
             avatarImage.gameObject.SetActive(false);
         }
-        if(NotNullNorEmpty(data.avatarImageFileName))
+        if(NotNullNorEmpty(data.vocalAudioFileName))
         {
             PlayVocalAudio(data.vocalAudioFileName);
         }
@@ -386,6 +386,7 @@ public class VNManager : MonoBehaviour
 
     void PlayAudio(string audioPath, AudioSource audioSource, bool isLoop)
     {
+        Debug.Log(audioPath);
         AudioClip audioClip = Resources.Load<AudioClip>(audioPath);
         if (audioClip != null)
         {
