@@ -101,7 +101,7 @@ public class VNManager : MonoBehaviour
     {
         if(!MenuManager.Instance.menuPanel.activeSelf&&
             !SLManager.Instance.saveLoadPanel.activeSelf&&
-            !HistoryManager.Instance.historyScrollView.activeSelf&&
+            !HistoryManager.Instance.historyPanel.activeSelf&&
             !SettingManager.Instance.settingPanel.activeSelf&&
             !ChoiceManager.Instance.choicePanel.activeSelf&&
             gamePanel.activeSelf&&Input.GetMouseButtonDown(0))
