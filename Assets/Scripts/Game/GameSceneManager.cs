@@ -721,10 +721,10 @@ namespace NoVerity.GameScene
                 typeof(RectTransform), typeof(RectMask2D));
             dialogueViewportObject.transform.SetParent(dialoguePanel.transform, false);
             RectTransform dialogueViewport = dialogueViewportObject.GetComponent<RectTransform>();
-            Anchor(dialogueViewport, new Vector2(.15f,.15f), new Vector2(.83f,.85f));
+            Anchor(dialogueViewport, new Vector2(.05f,.15f), new Vector2(.95f,.85f));
             dialogueScrollRect.viewport = dialogueViewport;
 
-            dialogueText = MakeText(dialogueViewport,"Dialogue",new Vector2(0f,1f),new Vector2(1f,1f),21,TextAlignmentOptions.TopLeft);
+            dialogueText = MakeText(dialogueViewport,"Dialogue",new Vector2(0f,1f),new Vector2(1f,1f),24,TextAlignmentOptions.TopLeft);
             RectTransform dialogueContent = dialogueText.rectTransform;
             dialogueContent.pivot = new Vector2(.5f, 1f);
             dialogueContent.anchoredPosition = Vector2.zero;

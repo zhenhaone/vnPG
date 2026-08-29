@@ -206,6 +206,12 @@ public class VNManager : MonoBehaviour
         if(isLoad)
         {
             RecoverLastBackgroundAndCharactor();
+
+            // 如果读档前打字机仍在运行，DisplayNextLine只会补完旧文本，
+            // 导致读档目标行没有真正执行，立绘动作也不会播放。
+            if(typewritterEffect != null && typewritterEffect.IsTyping())
+                typewritterEffect.CompleteLine();
+
             isLoad = false;
         }
         DisplayNextLine();
@@ -425,22 +431,97 @@ public class VNManager : MonoBehaviour
         {
             UpdateBackgroundImage(data.lastBackgroundImage);
         }
-        if(NotNullNorEmpty(data.lastBackgroundMusic))
+        RecoverBackgroundMusicBeforeLine(currentLine, data.lastBackgroundMusic);
+        RecoverCharactersBeforeLine(currentLine);
+    }
+
+    class CharacterRecoveryState
+    {
+        public bool hasAppeared;
+        public bool isVisible;
+        public string imageFileName;
+        public string coordinateX;
+    }
+
+    void RecoverCharactersBeforeLine(int lineIndex)
+    {
+        CharacterRecoveryState character1 = new CharacterRecoveryState();
+        CharacterRecoveryState character2 = new CharacterRecoveryState();
+        CharacterRecoveryState character3 = new CharacterRecoveryState();
+
+        int firstStoryLine = Mathf.Max(0, defaultStartLine);
+        int lastExecutedLine = Mathf.Min(lineIndex - 1, storyData.Count - 1);
+
+        for(int i = firstStoryLine; i <= lastExecutedLine; i++)
         {
-            PlayBackgroundMusic(data.lastBackgroundMusic);
+            var line = storyData[i];
+            ApplyCharacterLineToRecoveryState(
+                character1, line.charactor1Action,
+                line.charactor1ImageFileName, line.CoordinateX1);
+            ApplyCharacterLineToRecoveryState(
+                character2, line.charactor2Action,
+                line.charactor2ImageFileName, line.CoordinateX2);
+            ApplyCharacterLineToRecoveryState(
+                character3, line.charactor3Action,
+                line.charactor3ImageFileName, line.CoordinateX3);
         }
-        if (data.charactor1Action!=Constants.charactorActionAppearAt&& NotNullNorEmpty(data.lastCoordinate1))
+
+        RestoreCharacterFromState(character1, CharactorImage1);
+        RestoreCharacterFromState(character2, CharactorImage2);
+        RestoreCharacterFromState(character3, CharactorImage3);
+    }
+
+    void ApplyCharacterLineToRecoveryState(
+        CharacterRecoveryState state,
+        string action,
+        string imageFileName,
+        string coordinateX)
+    {
+        if(string.IsNullOrWhiteSpace(action))
+            return;
+
+        action = action.Trim();
+
+        if(action == Constants.charactorActionDisappear)
         {
-            UpdateCharactorImage(Constants.charactorActionAppearAt,data.charactor1ImageFileName,CharactorImage1, data.lastCoordinate1);
+            state.hasAppeared = true;
+            state.isVisible = false;
+            return;
         }
-        if (data.charactor2Action != Constants.charactorActionAppearAt&&NotNullNorEmpty(data.lastCoordinate2))
+
+        bool isAppearAction = action.StartsWith(Constants.charactorActionAppearAt);
+        bool isMoveAction = action.StartsWith(Constants.charactorActionMoveTo);
+        if(!isAppearAction && !isMoveAction)
+            return;
+
+        state.hasAppeared = true;
+        state.isVisible = true;
+
+        if(!string.IsNullOrWhiteSpace(imageFileName))
+            state.imageFileName = imageFileName.Trim();
+
+        if(!string.IsNullOrWhiteSpace(coordinateX))
+            state.coordinateX = coordinateX.Trim();
+    }
+
+    void RestoreCharacterFromState(CharacterRecoveryState state, Image characterImage)
+    {
+        if(characterImage == null)
+            return;
+
+        if(!state.hasAppeared || !state.isVisible ||
+           string.IsNullOrWhiteSpace(state.imageFileName) ||
+           string.IsNullOrWhiteSpace(state.coordinateX))
         {
-            UpdateCharactorImage(Constants.charactorActionAppearAt, data.charactor2ImageFileName, CharactorImage2, data.lastCoordinate2);
+            characterImage.gameObject.SetActive(false);
+            return;
         }
-        if (data.charactor3Action != Constants.charactorActionAppearAt && NotNullNorEmpty(data.lastCoordinate3))
-        {
-            UpdateCharactorImage(Constants.charactorActionAppearAt, data.charactor3ImageFileName, CharactorImage3, data.lastCoordinate3);
-        }
+
+        UpdateCharactorImage(
+            Constants.charactorActionAppearAt,
+            state.imageFileName,
+            characterImage,
+            state.coordinateX);
     }
 
     bool NotNullNorEmpty(string str)
@@ -581,6 +662,38 @@ public class VNManager : MonoBehaviour
                 source.clip = null;
                 source.gameObject.SetActive(false);
             }
+        }
+    }
+
+    /// <summary>
+    /// 回档时重建此前已经开始播放的全部背景音乐。
+    /// Excel 的“上次背景音”列可能为空，而且项目允许多个环境音/BGM同时播放，
+    /// 因此不能只依赖当前行的 lastBackgroundMusic。
+    /// </summary>
+    void RecoverBackgroundMusicBeforeLine(int lineIndex, string lastBackgroundMusic)
+    {
+        HashSet<string> recoveredMusic = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // storyData[0] 是 Excel 表头，从实际剧情起始行开始扫描。
+        int firstStoryLine = Mathf.Max(0, defaultStartLine);
+        int lastExecutedLine = Mathf.Min(lineIndex - 1, storyData.Count - 1);
+
+        for(int i = firstStoryLine; i <= lastExecutedLine; i++)
+        {
+            string musicFileName = storyData[i].backgroundMusicFileName;
+            if(string.IsNullOrWhiteSpace(musicFileName))
+                continue;
+
+            musicFileName = musicFileName.Trim();
+            if(recoveredMusic.Add(musicFileName))
+                PlayBackgroundMusic(musicFileName);
+        }
+
+        // 兼容已经正确填写“上次背景音”列的其他剧情表。
+        if(!string.IsNullOrWhiteSpace(lastBackgroundMusic))
+        {
+            string musicFileName = lastBackgroundMusic.Trim();
+            if(recoveredMusic.Add(musicFileName))
+                PlayBackgroundMusic(musicFileName);
         }
     }
 
