@@ -15,7 +15,7 @@ using UnityEngine.SceneManagement;
 
 public class VNManager : MonoBehaviour
 {
-    #region ����
+    #region 变量
     public GameObject gamePanel;
     public GameObject dialoguePanBox;
     public TextMeshProUGUI speakerName;
@@ -27,9 +27,21 @@ public class VNManager : MonoBehaviour
     public AudioSource vocalAudio;
     public Image backgroundImage;
     public AudioSource backgroundMusic;
+    [Range(0f, 1f)] public float backgroundMusicVolume = 1f;
     public Image CharactorImage1;
     public Image CharactorImage2;
     public Image CharactorImage3;
+
+    [Header("证据演出")]
+    [Tooltip("绑定场景中挂有 EvidencePresenter 脚本的对象")]
+    public EvidencePresenter evidencePresenter;
+    private bool isPlayingEvidence;
+
+    [Header("角色立绘明暗")]
+    [Tooltip("当前说话角色的颜色，白色表示保持原始亮度")]
+    public Color speakingCharacterColor = Color.white;
+    [Tooltip("当前未说话角色的颜色，RGB越低立绘越暗")]
+    public Color silentCharacterColor = new Color(0.45f, 0.45f, 0.45f, 1f);
 
     //public GameObject choicePanel;
     //public Button choiceButton1;
@@ -65,10 +77,12 @@ public class VNManager : MonoBehaviour
     private int maxReachedLineIndex = 0;
     private Dictionary<string, int> globalMaxReachedLineIndices = new Dictionary<string, int>();
     private LinkedList<string> historyRecords=new LinkedList<string>();
+    private readonly List<AudioSource> backgroundMusicSources = new List<AudioSource>();
+    private readonly Dictionary<string, AudioClip> backgroundMusicCache = new Dictionary<string, AudioClip>();
 
     public static VNManager Instance { get; private set; }
     #endregion
-    #region ��������
+    #region 生命周期
 
 
     private void Awake()
@@ -76,10 +90,16 @@ public class VNManager : MonoBehaviour
         if(Instance==null)
         {
             Instance = this;
+            if(backgroundMusic != null)
+            {
+                backgroundMusic.playOnAwake = false;
+                backgroundMusicSources.Add(backgroundMusic);
+            }
         }
         else
         {
             Destroy(gameObject);
+            return;
         }
     }
 
@@ -99,55 +119,59 @@ public class VNManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if(!MenuManager.Instance.menuPanel.activeSelf&&
-            !SLManager.Instance.saveLoadPanel.activeSelf&&
-            !HistoryManager.Instance.historyPanel.activeSelf&&
-            !SettingManager.Instance.settingPanel.activeSelf&&
-            !ChoiceManager.Instance.choicePanel.activeSelf&&
-            gamePanel.activeSelf&&Input.GetMouseButtonDown(0))
+        if (isPlayingEvidence ||
+           (evidencePresenter != null && evidencePresenter.IsShowing))
         {
-            if(Input.GetMouseButtonDown(0)||Input.GetKeyDown(KeyCode.Space))
-            {
-                if(!dialoguePanBox.activeSelf)
-                {
-                    OpenUI();
-                }
-                else if(!IsHittingBottomButtons())
-                {
-                    Debug.Log("1");
-                    
-                    DisplayNextLine();
-                }
-            }    
-            if(Input.GetKeyDown(KeyCode.Escape))
-            {
-                if(dialoguePanBox.activeSelf)
-                {
-                    CloseUI();
-                }
-                else
-                {
-                    OpenUI();
-                }
-            }
-            if(Input.GetKeyDown(KeyCode.LeftControl)||Input.GetKeyDown(KeyCode.RightControl))
-            {
-                Debug.Log("ctrl");
-                CtrlSkip();
-            }
+            return;
+        }
 
-            if(!dialoguePanBox.activeSelf)
-            {
+        if (MenuManager.Instance.menuPanel.activeSelf ||
+           SLManager.Instance.saveLoadPanel.activeSelf ||
+           HistoryManager.Instance.historyPanel.activeSelf ||
+           SettingManager.Instance.settingPanel.activeSelf ||
+           ChoiceManager.Instance.choicePanel.activeSelf ||
+           !gamePanel.activeSelf)
+        {
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+            if (dialoguePanBox.activeSelf)
+                CloseUI();
+            else
                 OpenUI();
-            }
-            else if(!IsHittingBottomButtons())
-            {  
-                DisplayNextLine(); 
-            }
+
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.LeftControl) ||
+           Input.GetKeyDown(KeyCode.RightControl))
+        {
+            CtrlSkip();
+        }
+
+        bool advancePressed =
+            Input.GetMouseButtonDown(0) ||
+            Input.GetKeyDown(KeyCode.Space);
+
+        if (!advancePressed)
+            return;
+
+        if (!dialoguePanBox.activeSelf)
+        {
+            OpenUI();
+            return;
+        }
+
+        if (!IsHittingBottomButtons())
+        {
+            // 一次点击只调用一次
+            DisplayNextLine();
         }
     }
     #endregion
-    # region ��ʼ��
+    # region 初始化
     void InitializeSaveFilePath()
     {
         saveFolderPath = Path.Combine(Application.persistentDataPath,Constants.SAVE_FILE_PATH);
@@ -191,7 +215,7 @@ public class VNManager : MonoBehaviour
     {
         currentLine = lineNUmber;
 
-        backgroundMusic.gameObject.SetActive(false);
+        StopAllBackgroundMusic();
         backgroundImage.gameObject.SetActive(false);
 
         avatarImage.gameObject.SetActive(false);
@@ -199,6 +223,7 @@ public class VNManager : MonoBehaviour
 
         CharactorImage1.gameObject.SetActive(false);
         CharactorImage2.gameObject.SetActive(false);
+        CharactorImage3.gameObject.SetActive(false);
 
         //choicePanel.SetActive(false);
         
@@ -208,7 +233,7 @@ public class VNManager : MonoBehaviour
     void LoadStoryFromFile(string fileName)
     {
         currentStoryFileName = fileName;
-        Debug.Log(Application.streamingAssetsPath);
+        //Debug.Log(Application.streamingAssetsPath);
         string path = Path.Combine(Application.streamingAssetsPath, "story/", fileName+Constants.EXCEL_FILE_EXTENSION);// fileName + excelFileExtension;
         storyData = ExcelReader.ReadExcel(path);
         if(storyData==null||storyData.Count==0)
@@ -226,10 +251,10 @@ public class VNManager : MonoBehaviour
         }
     }
     #endregion
-    #region չʾ
+    #region 展示
     void DisplayNextLine()
     {
-        Debug.Log("1");
+        //Debug.Log("1");
         if(currentLine>maxReachedLineIndex)
         {
             maxReachedLineIndex = currentLine;
@@ -275,7 +300,23 @@ public class VNManager : MonoBehaviour
     void DisplayThisLine()
     {
         var data = storyData[currentLine];
+
+        // Excel特殊演出行：
+        // speakerName填写 EVIDENCE 或“证据”，speakingContent填写证据ID。
+        if(IsEvidenceCommand(data.speakerName))
+        {
+            string evidenceId = data.speakingContent == null
+                ? string.Empty
+                : data.speakingContent.Trim();
+
+            // 先推进索引，避免证据关闭后再次执行同一行。
+            currentLine++;
+            StartCoroutine(PlayEvidencePerformance(evidenceId));
+            return;
+        }
+
         speakerName.text = data.speakerName;
+        UpdateSpeakingCharacterBrightness(data.speakerName);
         currentSpeakingContent = data.speakingContent;
         //speakingContent.text = data.speakingContent;
         typewritterEffect.StartTyping(currentSpeakingContent,currentTypingSpeed);
@@ -288,7 +329,7 @@ public class VNManager : MonoBehaviour
         }
         else
         {
-            Debug.Log("NULL");
+            //Debug.Log("NULL");
             avatarImage.gameObject.SetActive(false);
         }
         if(NotNullNorEmpty(data.vocalAudioFileName))
@@ -305,17 +346,66 @@ public class VNManager : MonoBehaviour
         }
         if(NotNullNorEmpty(data.charactor1Action))
         {
+            Debug.Log(data.charactor1ImageFileName +" "+ data.charactor1Action+" "+ data.CoordinateX1);
             UpdateCharactorImage(data.charactor1Action,data.charactor1ImageFileName,CharactorImage1,data.CoordinateX1);
         }
         if(NotNullNorEmpty(data.charactor2Action))
         {
+            Debug.Log(data.charactor2ImageFileName + " " + data.charactor2Action + " " + data.CoordinateX2);
             UpdateCharactorImage(data.charactor2Action, data.charactor2ImageFileName, CharactorImage2, data.CoordinateX2);
         }
         if (NotNullNorEmpty(data.charactor3Action))
         {
+            Debug.Log(data.charactor3ImageFileName + " " + data.charactor3Action + " " + data.CoordinateX3);
             UpdateCharactorImage(data.charactor3Action, data.charactor3ImageFileName, CharactorImage3, data.CoordinateX3);
         }
         currentLine++;
+    }
+
+    bool IsEvidenceCommand(string command)
+    {
+        if(string.IsNullOrWhiteSpace(command))
+            return false;
+
+        command = command.Trim();
+        return command.Equals("EVIDENCE", StringComparison.OrdinalIgnoreCase)
+            || command == "证据";
+    }
+
+    IEnumerator PlayEvidencePerformance(string evidenceId)
+    {
+        if(isPlayingEvidence)
+            yield break;
+
+        isPlayingEvidence = true;
+
+        // 演出期间停止自动播放和跳过，防止后台继续读取剧情行。
+        if(isAutoPlay)
+        {
+            isAutoPlay = false;
+            UpdateButtonImage(Constants.AUTO_OFF, autoButton);
+        }
+
+        if(isSkip)
+            EndSkip();
+
+        if(evidencePresenter == null)
+        {
+            Debug.LogError("VNManager没有绑定EvidencePresenter，无法展示证据：" + evidenceId);
+        }
+        else if(string.IsNullOrWhiteSpace(evidenceId))
+        {
+            Debug.LogError("证据演出行没有填写证据ID。");
+        }
+        else
+        {
+            yield return evidencePresenter.ShowEvidenceAndWait(evidenceId);
+        }
+
+        isPlayingEvidence = false;
+
+        // 玩家关闭证据后，自动显示下一行视觉小说文本。
+        DisplayNextLine();
     }
 
     void RecordHistory(string speaker,string content)
@@ -358,7 +448,7 @@ public class VNManager : MonoBehaviour
         return !string.IsNullOrEmpty(str);
     }
     #endregion
-    #region ѡ��
+    #region 选择
     void ShowChoices()
     {
         var data = storyData[currentLine];
@@ -382,18 +472,18 @@ public class VNManager : MonoBehaviour
         DisplayNextLine();
     }
     #endregion
-    #region ��Ч
+    #region 音效
 
     void PlayAudio(string audioPath, AudioSource audioSource, bool isLoop)
     {
-        Debug.Log(audioPath);
+        //Debug.Log(audioPath);
         AudioClip audioClip = Resources.Load<AudioClip>(audioPath);
         if (audioClip != null)
         {
             audioSource.clip = audioClip;
             audioSource.gameObject.SetActive(true);
-            audioSource.Play();
             audioSource.loop = isLoop;
+            audioSource.Play();
         }
         else
         {
@@ -408,7 +498,7 @@ public class VNManager : MonoBehaviour
         }
     }
 
-    void PlayVocalAudio(string audioFileName)
+    public void PlayVocalAudio(string audioFileName)
     {
         string audioPath = Constants.VOCAL_PATH + audioFileName;
 
@@ -417,13 +507,105 @@ public class VNManager : MonoBehaviour
 
     
 
-    void PlayBackgroundMusic(string musicFielName)
+    void PlayBackgroundMusic(string musicFileName)
     {
-        string musicPath = Constants.MUSIC_PATH + musicFielName;
-        PlayAudio(musicPath, backgroundMusic, false);
+        if(string.IsNullOrEmpty(musicFileName)) return;
+
+        string musicPath = Constants.MUSIC_PATH + musicFileName;
+
+        if(!backgroundMusicCache.TryGetValue(musicPath, out AudioClip musicClip))
+        {
+            musicClip = Resources.Load<AudioClip>(musicPath);
+            if(musicClip == null)
+            {
+                Debug.LogError(Constants.MUSIC_LOAD_FAILED + musicPath);
+                return;
+            }
+            backgroundMusicCache.Add(musicPath, musicClip);
+        }
+
+        // 相同BGM已经播放时不重复创建声源，也不从头播放。
+        foreach(AudioSource source in backgroundMusicSources)
+        {
+            if(source != null && source.isPlaying && source.clip == musicClip)
+                return;
+        }
+
+        AudioSource musicSource = GetAvailableBackgroundMusicSource();
+        musicSource.clip = musicClip;
+        musicSource.loop = true;
+        musicSource.volume = backgroundMusicVolume;
+        musicSource.gameObject.SetActive(true);
+        musicSource.Play();
+    }
+
+    AudioSource GetAvailableBackgroundMusicSource()
+    {
+        foreach(AudioSource source in backgroundMusicSources)
+        {
+            if(source != null && !source.isPlaying)
+                return source;
+        }
+
+        GameObject sourceObject = new GameObject("BackgroundMusic_" + backgroundMusicSources.Count);
+        sourceObject.transform.SetParent(transform, false);
+        AudioSource newSource = sourceObject.AddComponent<AudioSource>();
+        newSource.playOnAwake = false;
+        newSource.loop = true;
+
+        // 让动态创建的声源使用与原BGM声源相同的混音器和基础设置。
+        if(backgroundMusic != null)
+        {
+            newSource.outputAudioMixerGroup = backgroundMusic.outputAudioMixerGroup;
+            newSource.mute = backgroundMusic.mute;
+            newSource.priority = backgroundMusic.priority;
+            newSource.pitch = backgroundMusic.pitch;
+            newSource.panStereo = backgroundMusic.panStereo;
+            newSource.spatialBlend = backgroundMusic.spatialBlend;
+        }
+
+        backgroundMusicSources.Add(newSource);
+        return newSource;
+    }
+
+    public void StopBackgroundMusic(string musicFileName)
+    {
+        string musicPath = Constants.MUSIC_PATH + musicFileName;
+        if(!backgroundMusicCache.TryGetValue(musicPath, out AudioClip musicClip)) return;
+
+        foreach(AudioSource source in backgroundMusicSources)
+        {
+            if(source != null && source.clip == musicClip)
+            {
+                source.Stop();
+                source.clip = null;
+                source.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    public void StopAllBackgroundMusic()
+    {
+        foreach(AudioSource source in backgroundMusicSources)
+        {
+            if(source == null) continue;
+            source.Stop();
+            source.clip = null;
+            source.gameObject.SetActive(false);
+        }
+    }
+
+    public void SetBackgroundMusicVolume(float volume)
+    {
+        backgroundMusicVolume = Mathf.Clamp01(volume);
+        foreach(AudioSource source in backgroundMusicSources)
+        {
+            if(source != null)
+                source.volume = backgroundMusicVolume;
+        }
     }
     #endregion
-    #region ͼƬ
+    #region 图片
     void UpdateAvatarImage(string imageFileName)
     {
         string imagePath = Constants.AVATAR_PATH + imageFileName;
@@ -447,6 +629,7 @@ public class VNManager : MonoBehaviour
                 UpdateImage(imagePath, charactorImage);
                 var newPosition = new Vector2(float.Parse(x),charactorImage.rectTransform.anchoredPosition.y);
                 charactorImage.rectTransform.anchoredPosition= newPosition;
+                if(charactorImage.rectTransform.anchoredPosition.x!=newPosition.x)
                 charactorImage.DOFade(1,((isLoad||action==Constants.APPEAR_AT_INSTANTLY)?0:Constants.DURATION_TIME)).From(0);
             }
             else
@@ -463,6 +646,14 @@ public class VNManager : MonoBehaviour
         {
             if(NotNullNorEmpty(x))
             {
+                string imagePath = Constants.CHARACTOR_PATH + imageFileName;
+                //Sprite sprite = Resources.Load<Sprite>(imagePath);
+                //if (sprite != null && sprite != charactorImage.sprite) UpdateImage(imagePath, charactorImage);
+                UpdateImage(imagePath, charactorImage);
+                //var newPosition = new Vector2(float.Parse(x), charactorImage.rectTransform.anchoredPosition.y);
+                //charactorImage.rectTransform.anchoredPosition = newPosition;
+                //charactorImage.DOFade(1, ((isLoad || action == Constants.APPEAR_AT_INSTANTLY) ? 0 : Constants.DURATION_TIME)).From(0);
+
                 charactorImage.rectTransform.DOAnchorPosX(float.Parse(x),Constants.DURATION_TIME);
             }
             else
@@ -470,6 +661,29 @@ public class VNManager : MonoBehaviour
                 Debug.LogError(Constants.COORDINATE_MISSING);
             }
         }
+    }
+
+    void UpdateSpeakingCharacterBrightness(string currentSpeaker)
+    {
+        if(string.IsNullOrEmpty(currentSpeaker)) return;
+
+        string speaker = currentSpeaker.Trim().ToLowerInvariant();
+
+        // 只有角色自身说话时恢复亮度；u、narrator及其他说话者会让三人全部变暗。
+        SetCharacterBrightness(CharactorImage1, speaker == "a");
+        SetCharacterBrightness(CharactorImage2, speaker == "b");
+        SetCharacterBrightness(CharactorImage3, speaker == "c");
+    }
+
+    void SetCharacterBrightness(Image characterImage, bool isSpeaking)
+    {
+        if(characterImage == null) return;
+
+        Color targetColor = isSpeaking ? speakingCharacterColor : silentCharacterColor;
+
+        // 只改变RGB，保留淡入、淡出动画当前使用的透明度。
+        targetColor.a = characterImage.color.a;
+        characterImage.color = targetColor;
     }
 
     void UpdateImage(string imagePath,Image image)
@@ -486,7 +700,7 @@ public class VNManager : MonoBehaviour
         }
     }
     #endregion
-    #region ��ť
+    #region 按钮
     #region bottom
 
     bool IsHittingBottomButtons()

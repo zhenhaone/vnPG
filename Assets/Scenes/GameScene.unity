@@ -122,6 +122,52 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &921321678
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 921321680}
+  - component: {fileID: 921321679}
+  m_Layer: 0
+  m_Name: AudioMgr
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &921321679
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 921321678}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 220f616103a19254ca76534b4f4c08b5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  musicVolume: 1
+  soundEffectVolume: 1
+--- !u!4 &921321680
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 921321678}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.39642644, y: 0.54829556, z: -0.632321}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1310944423
 GameObject:
   m_ObjectHideFlags: 0
@@ -167,24 +213,86 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   backgroundSprite: {fileID: 21300000, guid: 9156bcc9f1d18034687c7237e247ad69, type: 3}
-  arthurSprite: {fileID: 21300000, guid: 34522073dd528ab469eb17a7b19a7033, type: 3}
-  charlesSprite: {fileID: 21300000, guid: 8c69d3d0662fc4242b2539d3e2aee52c, type: 3}
-  beatriceSprite: {fileID: 21300000, guid: 4608e15e43450c141ac03b2b36c157c3, type: 3}
-  evidenceSprites: []
+  arthurSprite: {fileID: 21300000, guid: 44e49548e63a6544d925ddbaee0aca94, type: 3}
+  charlesSprite: {fileID: 21300000, guid: 25de31e74af24384ba2db517e5ea21bd, type: 3}
+  beatriceSprite: {fileID: 21300000, guid: 3fd29a933ce06d24781b265bb73b2e5f, type: 3}
+  characterVariants:
+    arthur:
+      defaultSprite: {fileID: 21300000, guid: 44e49548e63a6544d925ddbaee0aca94, type: 3}
+      uselessStatementSprite: {fileID: 21300000, guid: 0c5e0e7d5734fe048a26f5b944e89f10, type: 3}
+      trueStatementSprite: {fileID: 0}
+      falseStatementSprite: {fileID: 0}
+      calmSprite: {fileID: 21300000, guid: 0c5e0e7d5734fe048a26f5b944e89f10, type: 3}
+      revolverSprite: {fileID: 21300000, guid: d28ea9ce33e4f7f40a8e2b5c314b560f, type: 3}
+      breakdownSprite: {fileID: 21300000, guid: d28ea9ce33e4f7f40a8e2b5c314b560f, type: 3}
+    charles:
+      defaultSprite: {fileID: 21300000, guid: 25de31e74af24384ba2db517e5ea21bd, type: 3}
+      uselessStatementSprite: {fileID: 21300000, guid: d3eea3c1cfd9c114b84492ce815e68f7, type: 3}
+      trueStatementSprite: {fileID: 0}
+      falseStatementSprite: {fileID: 0}
+      calmSprite: {fileID: 0}
+      revolverSprite: {fileID: 21300000, guid: 220a7563a5621764cbcfc8e085cffd70, type: 3}
+      breakdownSprite: {fileID: 21300000, guid: 220a7563a5621764cbcfc8e085cffd70, type: 3}
+    beatrice:
+      defaultSprite: {fileID: 21300000, guid: 3fd29a933ce06d24781b265bb73b2e5f, type: 3}
+      uselessStatementSprite: {fileID: 21300000, guid: a4c1691782154434188a6602d289e524, type: 3}
+      trueStatementSprite: {fileID: 0}
+      falseStatementSprite: {fileID: 0}
+      calmSprite: {fileID: 21300000, guid: a4c1691782154434188a6602d289e524, type: 3}
+      revolverSprite: {fileID: 0}
+      breakdownSprite: {fileID: 0}
+  evidenceSprites:
+    A_W1: {fileID: 21300000, guid: 92b6868539a92854aa54494f6183bffb, type: 3}
+    A_W2: {fileID: 21300000, guid: e9fc4556d4cda5241b19e52932dd7088, type: 3}
+    A_W3: {fileID: 0}
+    A_W4: {fileID: 21300000, guid: 827375a6f9641ca4da62ae1d5f92e3d8, type: 3}
+    A_S1: {fileID: 21300000, guid: 1152ae742062fab48b8b8f8135077e43, type: 3}
+    A_S2: {fileID: 21300000, guid: 789dba49e3525654580243ff52fe2779, type: 3}
+    A_S3: {fileID: 21300000, guid: a016014a72673f64c9c69ab177c2e9c8, type: 3}
+    A_C1: {fileID: 0}
+    A_C2: {fileID: 21300000, guid: 43ef92add478e664ead6b019796f71f4, type: 3}
+    C_W1: {fileID: 21300000, guid: c32185c8ac53c1842ab964e10c3c4074, type: 3}
+    C_W2: {fileID: 21300000, guid: f37410e0e0e8471448d64f910771619f, type: 3}
+    C_W3: {fileID: 21300000, guid: 9b20d34168af0d94fb63d2e8de1fc194, type: 3}
+    C_W4: {fileID: 21300000, guid: 0185b380acf99e34e8d24dd81e9ae0b5, type: 3}
+    C_S1: {fileID: 21300000, guid: 457030c5adfc1144aa1372e0b5feb0f8, type: 3}
+    C_S2: {fileID: 0}
+    C_S3: {fileID: 21300000, guid: 044e2c6b42d8047449af798018b7dedf, type: 3}
+    C_C1: {fileID: 21300000, guid: 4341ef052c551044d884abf06352c561, type: 3}
+    C_C2: {fileID: 21300000, guid: 61710646060ad2548a59896f6465ff07, type: 3}
+    B_W1: {fileID: 21300000, guid: 91fe66f681a64504b87628a99822827e, type: 3}
+    B_W2: {fileID: 0}
+    B_W3: {fileID: 21300000, guid: a604387b509f24b47b01e1fdf62cd5ac, type: 3}
+    B_W4: {fileID: 0}
+    B_S1: {fileID: 21300000, guid: 377e858fad6dde745b9cfbeabcdb4f0c, type: 3}
+    B_S2: {fileID: 21300000, guid: 803d11ea46c386948bfe21f083e24f60, type: 3}
+    B_S3: {fileID: 21300000, guid: d2852c137c578bd4bb93308f23742689, type: 3}
+    B_C1: {fileID: 21300000, guid: 9d800dc343960b942b578bb51565fa9a, type: 3}
+    B_C2: {fileID: 0}
   dialoguePanelUISprite: {fileID: 21300000, guid: c49b9f76026d7104fa07d1e44af232bc, type: 3}
-  evidenceCardUISprite: {fileID: 21300000, guid: 9efbbacf37a177d4bad483a1da4eb111, type: 3}
-  selectedEvidenceCardUISprite: {fileID: 21300000, guid: f17b4483f9e6180479745ac077fbe5b9, type: 3}
   buttonUISprite: {fileID: 21300000, guid: 7a9ea2a635d36f444b4b8904c54e0b34, type: 3}
   recordPanelUISprite: {fileID: 21300000, guid: 6d1ad5852a99dfc4e9569443aa64483f, type: 3}
   resultPanelUISprite: {fileID: 21300000, guid: 6d1ad5852a99dfc4e9569443aa64483f, type: 3}
   tensionBarSprite: {fileID: 21300000, guid: 6b51185afd3f29e4784e6c1681f737c2, type: 3}
   gunSprite: {fileID: 21300000, guid: 9cd9ce9de510eb243897d1cce2191e1d, type: 3}
   guiltSprite: {fileID: 21300000, guid: 3a152db60971d694a86d970e036f2641, type: 3}
-  selectedEvidenceTint: {r: 1, g: 1, b: 1, a: 1}
-  interrogationMusic: {fileID: 0}
+  selectedEvidenceTint: {r: 0.5283019, g: 0.5283019, b: 0.5283019, a: 1}
+  interrogationMusic: {fileID: 8300000, guid: 09ff94a49e15e544ca48adb1dcac0284, type: 3}
   clickSound: {fileID: 0}
-  emptyGunSound: {fileID: 0}
-  liveGunSound: {fileID: 0}
+  emptyGunSound: {fileID: 8300000, guid: 5d26116464a0f3141968df930723e6cb, type: 3}
+  liveGunSound: {fileID: 8300000, guid: 6ed5d812e5485864bb0973268da01805, type: 3}
+  clockSound: {fileID: 8300000, guid: 5ae30cc4b965d6c4db483cd36388f497, type: 3}
+  thunderSound: {fileID: 8300000, guid: fd786d15f0c45aa4f824eb7d542a9b4a, type: 3}
+  fileSearchSound: {fileID: 8300000, guid: a3514b222b4af0f46a1a531f58f71c52, type: 3}
+  tableSlamSound: {fileID: 8300000, guid: 6761f4308eb9c2448ba60fe15003f6b7, type: 3}
+  chairScrapeSound: {fileID: 8300000, guid: 47f664e4f3cde5940b9046a118752b1b, type: 3}
+  heartbeat0: {fileID: 0}
+  heartbeat20: {fileID: 0}
+  heartbeat70: {fileID: 0}
+  heartbeat90: {fileID: 0}
+  musicVolume: 1
+  soundEffectVolume: 1
+  heartbeatVolume: 1
   successSceneName: SampleScene
   failureSceneName: GameScene
 --- !u!1 &1795574875
@@ -330,3 +438,4 @@ SceneRoots:
   m_Roots:
   - {fileID: 1795574878}
   - {fileID: 1310944425}
+  - {fileID: 921321680}
