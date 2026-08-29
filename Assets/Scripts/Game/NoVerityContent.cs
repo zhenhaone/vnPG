@@ -5,7 +5,48 @@ namespace NoVerity.GameScene
     public static class NoVerityContent
     {
         private static EvidenceDefinition E(string id, string title, EvidencePower power, EvidenceTrait trait, string low, string truth, string high, string calm = "")
-            => new EvidenceDefinition(id, title, power, trait, low, truth, high, calm);
+        {
+            var evidence = new EvidenceDefinition(id, title, power, trait, low, truth, high, calm);
+            evidence.description = GetEvidenceDescription(id);
+            return evidence;
+        }
+
+        private static string GetEvidenceDescription(string id)
+        {
+            switch (id)
+            {
+                case "A_W1": return "Private conversations recovered from Clara's chat backups. Their words are far more intimate than those of ordinary friends, and several messages appear to have been deliberately deleted.";
+                case "A_W2": return "Search history recovered from Clara's phone, focused on signs of pregnancy, prenatal precautions, and the risks of terminating a pregnancy.";
+                case "A_W3": return "Surveillance footage near the scene shows Arthur leaving in haste. The timestamp closely matches the period in which Clara was injured.";
+                case "A_W4": return "Messages and instructions preserved in the group's private chats. Someone urged the others to distance themselves from Clara and exclude her from their activities.";
+                case "A_S1": return "An official pregnancy examination report bearing Clara's name. The examination took place shortly before the incident and confirms that she was pregnant.";
+                case "A_S2": return "Clara's blood was found on the corner of the wooden table, together with clear impact marks. The pattern is difficult to explain as an ordinary fall.";
+                case "A_S3": return "A recording captured during an argument. A voice repeatedly pressures Clara to terminate her pregnancy as the confrontation grows increasingly hostile.";
+                case "A_C1": return "An ordinary group photograph taken several years earlier. Everyone still appears close, before Clara became isolated from the others.";
+                case "A_C2": return "A check-in record from a small hotel near the scene on the night of the incident. Its timestamp fits Arthur's movements after he left.";
+
+                case "C_W1": return "A private group chat repeatedly mocks Clara and the rumors surrounding her pregnancy. Charles responds to and supports several of the remarks.";
+                case "C_W2": return "An online order for sedative medication placed through an account connected to Charles before the night of the incident.";
+                case "C_W3": return "Charles's fingerprints were found on the glass Clara used. Their position shows that he handled both the body of the glass and the area near its rim.";
+                case "C_W4": return "Two sets of footprints on the cottage floor run in opposite directions, suggesting that the same person left and later returned to the scene.";
+                case "C_S1": return "Forensic testing detected sedative metabolites in Clara's biological samples. The estimated time of ingestion falls on the night of the incident.";
+                case "C_S2": return "The medication platform retained traces of a deletion operation. Although the order vanished from the account history, its owner and deletion time remain recoverable.";
+                case "C_S3": return "Private messages exchanged by Charles and Beatrice after the incident. They discuss handling the scene and repeatedly insist that no one can learn what happened.";
+                case "C_C1": return "A forensic analysis of the concentration of drugs found in Clara's body, intended to determine whether the dose could have been directly fatal.";
+                case "C_C2": return "A comparative report covering footprints, soil, and fibres from the burial site, used to determine who was physically present there.";
+
+                case "B_W1": return "Private posts left by Beatrice on social media. Over time, they reveal an intense attachment to Charles and a willingness to bear consequences on his behalf.";
+                case "B_W2": return "A late-night route preserved by the vehicle's location system. It runs from Beatrice's home to the cottage and then continues toward the forest outside town.";
+                case "B_W3": return "Trace amounts of forest soil were recovered from Beatrice's cuff. Its mineral composition resembles soil collected near the burial site.";
+                case "B_W4": return "Shopping-app history containing searches for shovels, waterproof bags, and heavy-duty cleaning supplies shortly before the incident.";
+                case "B_S1": return "A trainer footprint found beside the burial pit. Its size, wear pattern, and tread closely match a pair owned by Beatrice.";
+                case "B_S2": return "Clothing fibres found inside Beatrice's coat match the garments Clara was wearing on the night of the incident.";
+                case "B_S3": return "In a private message sent after the incident, Beatrice writes, 'I will take the blame for everything. This has nothing to do with you.' The recipient is connected to Charles.";
+                case "B_C1": return "Records of Beatrice's long-term treatment for anxiety, noting strong dependency traits and emotional instability under severe pressure.";
+                case "B_C2": return "A chemical-contact screening report documenting whether traces of the sedative involved in the case were present on Beatrice's clothing or skin.";
+                default: return "Evidence documentation has not yet been completed.";
+            }
+        }
 
         public static List<SuspectDefinition> CreateSuspects() => new List<SuspectDefinition> { CreateArthur(), CreateCharles(), CreateBeatrice() };
 
@@ -43,7 +84,7 @@ namespace NoVerity.GameScene
 
         private static SuspectDefinition CreateBeatrice()
         {
-            var s = new SuspectDefinition { id=SuspectId.Beatrice, displayName="Beatrice Hall", label="Sensitive / Unstable / Low Resistance", initialTension=26, pressureModifier=8,
+            var s = new SuspectDefinition { id=SuspectId.Beatrice, displayName="Beatrice Hall", label="Sensitive / Unstable / Low Resistance", initialTension=26, pressureModifier=-5,
                 opening="(Avoiding your eyes) A-ask whatever you want...\nDetective: Where were you that night?\nBeatrice: I... I was home. I was home all night." };
             s.evidence.Add(E("B_W1","Private Messages Confessing Affection",EvidencePower.Weak,EvidenceTrait.Motive,"I wrote that carelessly. It means nothing.","Yes... I loved Charles. I would do anything Charles asked.","I wrote it years ago. It means nothing now."));
             s.evidence.Add(E("B_W2","Late-night Vehicle Route",EvidencePower.Weak,EvidenceTrait.Supplement,"I drove out to buy food.","Charles said something terrible had happened. I drove to the cottage and put Clara in the car.","I did not drive that night. Someone borrowed my car!"));

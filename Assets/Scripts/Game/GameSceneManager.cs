@@ -1,8 +1,10 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -143,6 +145,10 @@ namespace NoVerity.GameScene
         public Sprite recordPanelUISprite;
         public Sprite resultPanelUISprite;
 
+        [Header("Evidence Tooltip Art Resource")]
+        [Tooltip("仅用于鼠标悬停证据时出现的介绍栏，不与背景或对话框共用")]
+        public Sprite evidenceTooltipUISprite;
+
         [Header("Gameplay Art Resources")]
         [Tooltip("Displayed behind the tension number.")]
         public Sprite tensionBarSprite;
@@ -200,6 +206,7 @@ namespace NoVerity.GameScene
         private readonly List<EvidenceDefinition> drawn = new List<EvidenceDefinition>();
         private readonly List<EvidenceDefinition> selectedEvidence = new List<EvidenceDefinition>();
         private readonly List<Button> evidenceButtons = new List<Button>();
+        private readonly Dictionary<Button, Image> evidenceButtonImages = new Dictionary<Button, Image>();
 
         private int suspectIndex;
         private int round;
@@ -214,6 +221,11 @@ namespace NoVerity.GameScene
         private Transform evidenceRoot;
         private ScrollRect dialogueScrollRect;
         private Scrollbar dialogueScrollbar;
+        private GameObject evidenceTooltipPanel;
+        private TMP_Text evidenceTooltipTitleText;
+        private TMP_Text evidenceTooltipText;
+        private TMP_Text evidenceTooltipRightText;
+        private Button hoveredEvidenceButton;
         private Button confirmButton, emptyGunButton, liveGunButton;
         private GameObject interrogationPanel, recordPanel, resultPanel;
         private TMP_Text resultText;
@@ -533,8 +545,10 @@ namespace NoVerity.GameScene
 
         private void ClearEvidenceButtons()
         {
+            HideEvidenceTooltip();
             foreach (var b in evidenceButtons) if (b != null) Destroy(b.gameObject);
             evidenceButtons.Clear();
+            evidenceButtonImages.Clear();
         }
 
         private void CreateEvidenceButton(EvidenceDefinition evidence)
@@ -551,16 +565,21 @@ namespace NoVerity.GameScene
             layoutElement.preferredWidth = 250;
             layoutElement.preferredHeight = 220;
 
-            Image image = buttonObject.GetComponent<Image>();
-            image.sprite = evidenceSprite;
-            image.preserveAspect = true;
-            image.type = Image.Type.Simple;
-            image.color = Color.white;
+            // 证据原图本身就是按钮，不显示统一底图和下方文字。
+            Image evidenceImage = buttonObject.GetComponent<Image>();
+            evidenceImage.sprite = evidenceSprite;
+            evidenceImage.preserveAspect = true;
+            evidenceImage.type = Image.Type.Simple;
+            evidenceImage.color = Color.white;
+            evidenceImage.raycastTarget = true;
 
             Button button = buttonObject.GetComponent<Button>();
-            button.targetGraphic = image;
+            button.targetGraphic = evidenceImage;
+            button.transition = Selectable.Transition.None;
+            evidenceButtonImages[button] = evidenceImage;
             SetEvidenceCardVisual(button, false);
             button.onClick.AddListener(() => ToggleEvidence(evidence, button));
+            AddEvidenceHoverEvents(button, evidence);
             evidenceButtons.Add(button);
         }
 
@@ -572,9 +591,98 @@ namespace NoVerity.GameScene
 
         private void SetEvidenceCardVisual(Button button, bool isSelected)
         {
-            if (button == null || button.image == null) return;
-            // 不替换统一卡片UI，直接在证据原图上应用选中颜色。
-            button.image.color = isSelected ? selectedEvidenceTint : Color.white;
+            if (button == null) return;
+            if (!evidenceButtonImages.TryGetValue(button, out Image evidenceImage) || evidenceImage == null)
+                return;
+
+            // 不替换统一卡片UI，只在证据原图上应用选中颜色，注释保持清晰。
+            evidenceImage.color = isSelected ? selectedEvidenceTint : Color.white;
+        }
+
+        private void AddEvidenceHoverEvents(Button button, EvidenceDefinition evidence)
+        {
+            EventTrigger trigger = button.gameObject.AddComponent<EventTrigger>();
+
+            EventTrigger.Entry enterEntry = new EventTrigger.Entry {
+                eventID = EventTriggerType.PointerEnter
+            };
+            enterEntry.callback.AddListener(_ => ShowEvidenceTooltip(button, evidence));
+            trigger.triggers.Add(enterEntry);
+
+            EventTrigger.Entry exitEntry = new EventTrigger.Entry {
+                eventID = EventTriggerType.PointerExit
+            };
+            exitEntry.callback.AddListener(_ =>
+                StartCoroutine(HideEvidenceTooltipWhenPointerLeaves(button)));
+            trigger.triggers.Add(exitEntry);
+        }
+
+        private void ShowEvidenceTooltip(Button button, EvidenceDefinition evidence)
+        {
+            if (evidenceTooltipPanel == null || evidenceTooltipText == null) return;
+
+            hoveredEvidenceButton = button;
+            string description = string.IsNullOrWhiteSpace(evidence.description)
+                ? evidence.title : evidence.description;
+
+            if (evidenceTooltipTitleText != null)
+                evidenceTooltipTitleText.text = evidence.title;
+            SplitDescriptionForPages(description, out string leftDescription, out string rightDescription);
+            evidenceTooltipText.text = leftDescription;
+            if (evidenceTooltipRightText != null)
+                evidenceTooltipRightText.text = rightDescription;
+            evidenceTooltipPanel.SetActive(true);
+            evidenceTooltipPanel.transform.SetAsLastSibling();
+        }
+
+        private IEnumerator HideEvidenceTooltipWhenPointerLeaves(Button sourceButton)
+        {
+            // 给鼠标留出从证据图移动到介绍框的时间。
+            yield return new WaitForSecondsRealtime(.1f);
+
+            bool overEvidence = sourceButton != null &&
+                RectTransformUtility.RectangleContainsScreenPoint(
+                    sourceButton.GetComponent<RectTransform>(), Input.mousePosition, null);
+            bool overTooltip = evidenceTooltipPanel != null && evidenceTooltipPanel.activeSelf &&
+                RectTransformUtility.RectangleContainsScreenPoint(
+                    evidenceTooltipPanel.GetComponent<RectTransform>(), Input.mousePosition, null);
+
+            if (!overEvidence && !overTooltip && hoveredEvidenceButton == sourceButton)
+                HideEvidenceTooltip();
+        }
+
+        private void HideEvidenceTooltip()
+        {
+            hoveredEvidenceButton = null;
+            if (evidenceTooltipPanel != null)
+                evidenceTooltipPanel.SetActive(false);
+        }
+
+        private void SplitDescriptionForPages(string description, out string leftPage, out string rightPage)
+        {
+            leftPage = description ?? string.Empty;
+            rightPage = string.Empty;
+            if (string.IsNullOrWhiteSpace(description)) return;
+
+            string[] words = description.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length < 2) return;
+
+            // 左页还要容纳标题，因此放约45%的正文，其余内容放在右页。
+            int targetLength = Mathf.RoundToInt(description.Length * .45f);
+            int currentLength = 0;
+            int splitIndex = 1;
+            for (int i = 0; i < words.Length; i++)
+            {
+                currentLength += words[i].Length + 1;
+                if (currentLength >= targetLength)
+                {
+                    splitIndex = Mathf.Clamp(i + 1, 1, words.Length - 1);
+                    break;
+                }
+            }
+
+            leftPage = string.Join(" ", words.Take(splitIndex));
+            rightPage = string.Join(" ", words.Skip(splitIndex));
         }
 
         private void BuildUI()
@@ -588,31 +696,40 @@ namespace NoVerity.GameScene
             backgroundImage = MakeImage(canvasGO.transform, "Background", Vector2.zero, Vector2.one);
             backgroundImage.sprite = backgroundSprite; backgroundImage.color = backgroundSprite ? Color.white : new Color32(25,20,20,255);
             interrogationPanel = MakePanel(canvasGO.transform, "InterrogationPanel", Vector2.zero, Vector2.one, Color.clear);
-            titleText = MakeText(interrogationPanel.transform,"SuspectTitle",new Vector2(.03f,.82f),new Vector2(.35f,.97f),30,TextAlignmentOptions.Left);
-            tensionBarImage = MakeImage(interrogationPanel.transform,"TensionBar",new Vector2(.67f,.87f),new Vector2(.96f,.97f));
+            titleText = MakeText(interrogationPanel.transform,"SuspectTitle",new Vector2(.03f,.88f),new Vector2(.37f,.98f),30,TextAlignmentOptions.Left);
+            // 紧张条放在左侧人物立绘正上方。
+            tensionBarImage = MakeImage(interrogationPanel.transform,"TensionBar",new Vector2(.03f,.80f),new Vector2(.37f,.87f));
             tensionBarImage.sprite = tensionBarSprite;
             tensionBarImage.color = tensionBarSprite != null ? Color.white : Color.clear;
             tensionBarImage.type = Image.Type.Simple;
             tensionBarImage.raycastTarget = false;
-            tensionText = MakeText(interrogationPanel.transform,"Tension",new Vector2(.68f,.88f),new Vector2(.95f,.96f),28,TextAlignmentOptions.Right);
-            roundText = MakeText(interrogationPanel.transform,"Round",new Vector2(.68f,.82f),new Vector2(.95f,.88f),22,TextAlignmentOptions.Right);
-            portraitImage = MakeImage(interrogationPanel.transform,"Portrait",new Vector2(-0.08f,0.03f),new Vector2(0.43f,0.92f)); portraitImage.preserveAspect=true;
-            var dialoguePanel = MakePanel(interrogationPanel.transform,"DialoguePanel",new Vector2(.37f,.50f),new Vector2(.96f,.81f),new Color32(20,16,16,210));
+            tensionText = MakeText(interrogationPanel.transform,"Tension",new Vector2(.05f,.805f),new Vector2(.35f,.865f),26,TextAlignmentOptions.Right);
+            roundText = MakeText(interrogationPanel.transform,"Round",new Vector2(.03f,.755f),new Vector2(.37f,.80f),20,TextAlignmentOptions.Right);
+            portraitImage = MakeImage(interrogationPanel.transform,"Portrait",new Vector2(-0.04f,.03f),new Vector2(.38f,.755f)); portraitImage.preserveAspect=true;
+            // 适配“通用背景.png”的约1.69:1宽高比。
+            var dialoguePanel = MakePanel(interrogationPanel.transform,"DialoguePanel",new Vector2(.38f,.29f),new Vector2(.98f,.922f),new Color32(20,16,16,210));
             ApplyUISprite(dialoguePanel.GetComponent<Image>(), dialoguePanelUISprite, new Color32(20,16,16,210));
             // 上方描写与突发事件共用可滚动的对话区域。
-            dialoguePanel.AddComponent<RectMask2D>();
             dialogueScrollRect = dialoguePanel.AddComponent<ScrollRect>();
-            dialogueScrollRect.viewport = dialoguePanel.GetComponent<RectTransform>();
             dialogueScrollRect.horizontal = false;
             dialogueScrollRect.vertical = true;
             dialogueScrollRect.movementType = ScrollRect.MovementType.Clamped;
             dialogueScrollRect.scrollSensitivity = 24f;
 
-            dialogueText = MakeText(dialoguePanel.transform,"Dialogue",new Vector2(.03f,1f),new Vector2(.92f,1f),22,TextAlignmentOptions.TopLeft);
+            // 独立安全视口确保正文在任何滚动位置都不会进入四周装饰条纹。
+            GameObject dialogueViewportObject = new GameObject("DialogueViewport",
+                typeof(RectTransform), typeof(RectMask2D));
+            dialogueViewportObject.transform.SetParent(dialoguePanel.transform, false);
+            RectTransform dialogueViewport = dialogueViewportObject.GetComponent<RectTransform>();
+            Anchor(dialogueViewport, new Vector2(.15f,.15f), new Vector2(.83f,.85f));
+            dialogueScrollRect.viewport = dialogueViewport;
+
+            dialogueText = MakeText(dialogueViewport,"Dialogue",new Vector2(0f,1f),new Vector2(1f,1f),21,TextAlignmentOptions.TopLeft);
             RectTransform dialogueContent = dialogueText.rectTransform;
             dialogueContent.pivot = new Vector2(.5f, 1f);
-            dialogueContent.anchoredPosition = new Vector2(0f, -16f);
+            dialogueContent.anchoredPosition = Vector2.zero;
             dialogueContent.sizeDelta = new Vector2(0f, 0f);
+            dialogueText.color = dialoguePanelUISprite != null ? dark : ink;
             dialogueText.enableAutoSizing = false;
             dialogueText.overflowMode = TextOverflowModes.Overflow;
             ContentSizeFitter dialogueFitter = dialogueText.gameObject.AddComponent<ContentSizeFitter>();
@@ -621,7 +738,7 @@ namespace NoVerity.GameScene
             dialogueScrollRect.content = dialogueContent;
 
             GameObject scrollbarObject = MakePanel(dialoguePanel.transform,"DialogueScrollbar",
-                new Vector2(.945f,.06f),new Vector2(.985f,.94f),new Color32(45,35,31,220));
+                new Vector2(.85f,.15f),new Vector2(.88f,.85f),new Color32(45,35,31,100));
             dialogueScrollbar = scrollbarObject.AddComponent<Scrollbar>();
             dialogueScrollbar.direction = Scrollbar.Direction.BottomToTop;
 
@@ -630,19 +747,60 @@ namespace NoVerity.GameScene
             Anchor(slidingArea.GetComponent<RectTransform>(), new Vector2(.15f,.02f), new Vector2(.85f,.98f));
 
             Image scrollbarHandle = MakeImage(slidingArea.transform,"Handle",Vector2.zero,Vector2.one);
-            scrollbarHandle.color = ink;
+            scrollbarHandle.color = dialoguePanelUISprite != null ? brown : ink;
             dialogueScrollbar.handleRect = scrollbarHandle.rectTransform;
             dialogueScrollbar.targetGraphic = scrollbarHandle;
             dialogueScrollbar.size = .35f;
 
             dialogueScrollRect.verticalScrollbar = dialogueScrollbar;
             dialogueScrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
-            evidenceRoot = MakePanel(interrogationPanel.transform,"EvidenceCards",new Vector2(.36f,.22f),new Vector2(.96f,.48f),Color.clear).transform;
+            evidenceRoot = MakePanel(interrogationPanel.transform,"EvidenceCards",new Vector2(.38f,.075f),new Vector2(.98f,.27f),Color.clear).transform;
             var layout=evidenceRoot.gameObject.AddComponent<HorizontalLayoutGroup>(); layout.spacing=20; layout.childAlignment=TextAnchor.MiddleCenter; layout.childForceExpandWidth=true; layout.childForceExpandHeight=true;
-            hintText = MakeText(interrogationPanel.transform,"Hint",new Vector2(.37f,.14f),new Vector2(.96f,.21f),18,TextAlignmentOptions.Center);
-            confirmButton=MakeButton(interrogationPanel.transform,"Present Evidence",new Vector2(260,60)); Anchor(confirmButton.GetComponent<RectTransform>(),new Vector2(.78f,.04f),new Vector2(.94f,.12f)); confirmButton.onClick.AddListener(ConfirmEvidence);
-            emptyGunButton=MakeButton(interrogationPanel.transform,"Revolver: Blank (-10)",new Vector2(220,55)); Anchor(emptyGunButton.GetComponent<RectTransform>(),new Vector2(.37f,.04f),new Vector2(.50f,.12f)); emptyGunButton.onClick.AddListener(()=>UseRevolver(false));
-            liveGunButton=MakeButton(interrogationPanel.transform,"Revolver: Live (+10)",new Vector2(220,55)); Anchor(liveGunButton.GetComponent<RectTransform>(),new Vector2(.52f,.04f),new Vector2(.65f,.12f)); liveGunButton.onClick.AddListener(()=>UseRevolver(true));
+
+            // 适配“笔记本.png”的约1.59:1宽高比，左页标题、右页介绍。
+            evidenceTooltipPanel = MakePanel(interrogationPanel.transform,"EvidenceTooltip",
+                new Vector2(.34f,.22f),new Vector2(.76f,.69f),new Color32(24,19,18,248));
+            ApplyUISprite(evidenceTooltipPanel.GetComponent<Image>(), evidenceTooltipUISprite,
+                new Color32(24,19,18,248));
+
+            evidenceTooltipTitleText = MakeText(evidenceTooltipPanel.transform,"EvidenceTooltipTitle",
+                new Vector2(.07f,.67f),new Vector2(.44f,.85f),28,TextAlignmentOptions.Center);
+            evidenceTooltipTitleText.enableAutoSizing = true;
+            evidenceTooltipTitleText.fontSizeMin = 21;
+            evidenceTooltipTitleText.fontSizeMax = 28;
+            evidenceTooltipTitleText.fontStyle = FontStyles.Bold;
+            evidenceTooltipTitleText.color = evidenceTooltipUISprite != null ? brown : ink;
+            evidenceTooltipTitleText.raycastTarget = false;
+
+            evidenceTooltipText = MakeText(evidenceTooltipPanel.transform,"EvidenceTooltipText",
+                new Vector2(.08f,.15f),new Vector2(.44f,.64f),22,TextAlignmentOptions.TopLeft);
+            evidenceTooltipText.enableAutoSizing = false;
+            evidenceTooltipText.fontSize = 22;
+            evidenceTooltipText.color = evidenceTooltipUISprite != null ? dark : ink;
+            evidenceTooltipText.raycastTarget = false;
+
+            evidenceTooltipRightText = MakeText(evidenceTooltipPanel.transform,"EvidenceTooltipRightText",
+                new Vector2(.53f,.15f),new Vector2(.87f,.85f),22,TextAlignmentOptions.TopLeft);
+            evidenceTooltipRightText.enableAutoSizing = false;
+            evidenceTooltipRightText.fontSize = 22;
+            evidenceTooltipRightText.color = evidenceTooltipUISprite != null ? dark : ink;
+            evidenceTooltipRightText.raycastTarget = false;
+
+            EventTrigger tooltipTrigger = evidenceTooltipPanel.AddComponent<EventTrigger>();
+            EventTrigger.Entry tooltipExit = new EventTrigger.Entry {
+                eventID = EventTriggerType.PointerExit
+            };
+            tooltipExit.callback.AddListener(_ => {
+                if (hoveredEvidenceButton != null)
+                    StartCoroutine(HideEvidenceTooltipWhenPointerLeaves(hoveredEvidenceButton));
+            });
+            tooltipTrigger.triggers.Add(tooltipExit);
+            evidenceTooltipPanel.SetActive(false);
+
+            hintText = MakeText(interrogationPanel.transform,"Hint",new Vector2(.38f,.27f),new Vector2(.98f,.29f),14,TextAlignmentOptions.Center);
+            confirmButton=MakeButton(interrogationPanel.transform,"Present Evidence",new Vector2(260,60)); Anchor(confirmButton.GetComponent<RectTransform>(),new Vector2(.84f,.01f),new Vector2(.98f,.065f)); confirmButton.onClick.AddListener(ConfirmEvidence);
+            emptyGunButton=MakeButton(interrogationPanel.transform,"Revolver: Blank (-10)",new Vector2(220,55)); Anchor(emptyGunButton.GetComponent<RectTransform>(),new Vector2(.38f,.01f),new Vector2(.51f,.065f)); emptyGunButton.onClick.AddListener(()=>UseRevolver(false));
+            liveGunButton=MakeButton(interrogationPanel.transform,"Revolver: Live (+10)",new Vector2(220,55)); Anchor(liveGunButton.GetComponent<RectTransform>(),new Vector2(.53f,.01f),new Vector2(.66f,.065f)); liveGunButton.onClick.AddListener(()=>UseRevolver(true));
             ApplyGunSprite(emptyGunButton);
             ApplyGunSprite(liveGunButton);
 

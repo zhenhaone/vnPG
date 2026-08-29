@@ -244,35 +244,36 @@ MonoBehaviour:
   evidenceSprites:
     A_W1: {fileID: 21300000, guid: 92b6868539a92854aa54494f6183bffb, type: 3}
     A_W2: {fileID: 21300000, guid: e9fc4556d4cda5241b19e52932dd7088, type: 3}
-    A_W3: {fileID: 0}
+    A_W3: {fileID: 21300000, guid: 789dba49e3525654580243ff52fe2779, type: 3}
     A_W4: {fileID: 21300000, guid: 827375a6f9641ca4da62ae1d5f92e3d8, type: 3}
     A_S1: {fileID: 21300000, guid: 1152ae742062fab48b8b8f8135077e43, type: 3}
     A_S2: {fileID: 21300000, guid: 789dba49e3525654580243ff52fe2779, type: 3}
     A_S3: {fileID: 21300000, guid: a016014a72673f64c9c69ab177c2e9c8, type: 3}
-    A_C1: {fileID: 0}
+    A_C1: {fileID: 21300000, guid: 0185b380acf99e34e8d24dd81e9ae0b5, type: 3}
     A_C2: {fileID: 21300000, guid: 43ef92add478e664ead6b019796f71f4, type: 3}
     C_W1: {fileID: 21300000, guid: c32185c8ac53c1842ab964e10c3c4074, type: 3}
     C_W2: {fileID: 21300000, guid: f37410e0e0e8471448d64f910771619f, type: 3}
     C_W3: {fileID: 21300000, guid: 9b20d34168af0d94fb63d2e8de1fc194, type: 3}
     C_W4: {fileID: 21300000, guid: 0185b380acf99e34e8d24dd81e9ae0b5, type: 3}
     C_S1: {fileID: 21300000, guid: 457030c5adfc1144aa1372e0b5feb0f8, type: 3}
-    C_S2: {fileID: 0}
+    C_S2: {fileID: 21300000, guid: f37410e0e0e8471448d64f910771619f, type: 3}
     C_S3: {fileID: 21300000, guid: 044e2c6b42d8047449af798018b7dedf, type: 3}
     C_C1: {fileID: 21300000, guid: 4341ef052c551044d884abf06352c561, type: 3}
     C_C2: {fileID: 21300000, guid: 61710646060ad2548a59896f6465ff07, type: 3}
     B_W1: {fileID: 21300000, guid: 91fe66f681a64504b87628a99822827e, type: 3}
-    B_W2: {fileID: 0}
+    B_W2: {fileID: 21300000, guid: 0185b380acf99e34e8d24dd81e9ae0b5, type: 3}
     B_W3: {fileID: 21300000, guid: a604387b509f24b47b01e1fdf62cd5ac, type: 3}
-    B_W4: {fileID: 0}
+    B_W4: {fileID: 21300000, guid: f37410e0e0e8471448d64f910771619f, type: 3}
     B_S1: {fileID: 21300000, guid: 377e858fad6dde745b9cfbeabcdb4f0c, type: 3}
     B_S2: {fileID: 21300000, guid: 803d11ea46c386948bfe21f083e24f60, type: 3}
     B_S3: {fileID: 21300000, guid: d2852c137c578bd4bb93308f23742689, type: 3}
     B_C1: {fileID: 21300000, guid: 9d800dc343960b942b578bb51565fa9a, type: 3}
-    B_C2: {fileID: 0}
-  dialoguePanelUISprite: {fileID: 21300000, guid: c49b9f76026d7104fa07d1e44af232bc, type: 3}
+    B_C2: {fileID: 21300000, guid: 4341ef052c551044d884abf06352c561, type: 3}
+  dialoguePanelUISprite: {fileID: 21300000, guid: decbca476cdf0cc489bcf0c8503abd24, type: 3}
   buttonUISprite: {fileID: 21300000, guid: 7a9ea2a635d36f444b4b8904c54e0b34, type: 3}
   recordPanelUISprite: {fileID: 21300000, guid: 6d1ad5852a99dfc4e9569443aa64483f, type: 3}
   resultPanelUISprite: {fileID: 21300000, guid: 6d1ad5852a99dfc4e9569443aa64483f, type: 3}
+  evidenceTooltipUISprite: {fileID: 21300000, guid: db2d6c4b4217f154caa46bcc05e9825b, type: 3}
   tensionBarSprite: {fileID: 21300000, guid: 6b51185afd3f29e4784e6c1681f737c2, type: 3}
   gunSprite: {fileID: 21300000, guid: 9cd9ce9de510eb243897d1cce2191e1d, type: 3}
   guiltSprite: {fileID: 21300000, guid: 3a152db60971d694a86d970e036f2641, type: 3}
