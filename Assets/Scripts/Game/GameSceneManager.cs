@@ -136,6 +136,14 @@ namespace NoVerity.GameScene
         [Header("Character Variant Art Resources")]
         public CharacterVariantBindings characterVariants = new CharacterVariantBindings();
 
+        [Header("Final Accusation Portraits")]
+        [Tooltip("最终指认界面中 Arthur 选项使用的头像")]
+        public Sprite arthurAccusationPortrait;
+        [Tooltip("最终指认界面中 Charles 选项使用的头像")]
+        public Sprite charlesAccusationPortrait;
+        [Tooltip("最终指认界面中 Beatrice 选项使用的头像")]
+        public Sprite beatriceAccusationPortrait;
+
         [Header("Evidence Art Resources (27)")]
         public EvidenceSpriteBindings evidenceSprites = new EvidenceSpriteBindings();
 
@@ -145,9 +153,11 @@ namespace NoVerity.GameScene
         public Sprite recordPanelUISprite;
         public Sprite resultPanelUISprite;
 
-        [Header("Evidence Tooltip Art Resource")]
-        [Tooltip("仅用于鼠标悬停证据时出现的介绍栏，不与背景或对话框共用")]
+        [Header("Evidence Detail UI Art Resource")]
+        [Tooltip("用于点击证据后打开的详情界面，不与背景或对话框共用")]
         public Sprite evidenceTooltipUISprite;
+        [Tooltip("文本框右上角打开证据详情界面的按钮素材")]
+        public Sprite evidenceDetailButtonSprite;
 
         [Header("Gameplay Art Resources")]
         [Tooltip("Displayed behind the tension number.")]
@@ -211,6 +221,7 @@ namespace NoVerity.GameScene
         private int suspectIndex;
         private int round;
         private bool revolverUsed;
+        private bool revolverUsedAtSuspectStart;
         private AudioSource musicSource;
         private AudioSource soundEffectSource;
         private AudioSource heartbeatSource;
@@ -221,11 +232,17 @@ namespace NoVerity.GameScene
         private Transform evidenceRoot;
         private ScrollRect dialogueScrollRect;
         private Scrollbar dialogueScrollbar;
-        private GameObject evidenceTooltipPanel;
-        private TMP_Text evidenceTooltipTitleText;
-        private TMP_Text evidenceTooltipText;
-        private TMP_Text evidenceTooltipRightText;
-        private Button hoveredEvidenceButton;
+        private GameObject evidenceDetailPanel;
+        private Image evidenceDetailImage;
+        private TMP_Text evidenceDetailTitleText;
+        private TMP_Text evidenceDetailText;
+        private Button evidenceDetailOpenButton;
+        private Button evidenceDetailSelectButton;
+        private Button evidenceDetailCloseButton;
+        private Button evidenceDetailPreviousButton;
+        private Button evidenceDetailNextButton;
+        private EvidenceDefinition openedEvidence;
+        private Button openedEvidenceButton;
         private Button confirmButton, emptyGunButton, liveGunButton;
         private GameObject interrogationPanel, recordPanel, resultPanel;
         private TMP_Text resultText;
@@ -278,6 +295,7 @@ namespace NoVerity.GameScene
         private void BeginSuspect(int index)
         {
             suspectIndex = index;
+            revolverUsedAtSuspectStart = revolverUsed;
             round = 1;
             remaining.Clear();
             remaining.AddRange(Current.evidence);
@@ -445,6 +463,7 @@ namespace NoVerity.GameScene
             interrogationPanel.SetActive(false);
             recordPanel.SetActive(false);
             resultPanel.SetActive(true);
+            SetAccusationButtons(true);
             guiltImage.gameObject.SetActive(false);
             continueButton.gameObject.SetActive(false);
             resultText.text = "<size=130%><b>Final Accusation</b></size>\n\nAn accusation requires a true motive statement, a true method statement, and one questioned case supplement.";
@@ -483,6 +502,9 @@ namespace NoVerity.GameScene
             SetAccusationButtons(false);
             guiltImage.gameObject.SetActive(success && guiltSprite != null);
             pendingSceneName = success ? successSceneName : failureSceneName;
+            continueButton.GetComponentInChildren<TMP_Text>().text = "Continue";
+            continueButton.onClick.RemoveAllListeners();
+            continueButton.onClick.AddListener(LoadEndingScene);
             continueButton.gameObject.SetActive(true);
         }
 
@@ -494,8 +516,44 @@ namespace NoVerity.GameScene
             string text = Current.id == SuspectId.Arthur ? "Arthur seizes the revolver: You think you can judge me?"
                 : Current.id == SuspectId.Charles ? "Charles loses all composure and lunges at you."
                 : "Beatrice erupts in terror: Stop pushing me!";
-            EndGame("Breakdown", "Your interrogation went too far. " + text + "\nThe files scatter across the floor. The truth is buried forever.", false);
+            ShowBreakdown("Your interrogation went too far. " + text +
+                "\nThe files scatter across the floor. The truth is buried forever.");
             return true;
+        }
+
+        private void ShowBreakdown(string body)
+        {
+            interrogationPanel.SetActive(false);
+            recordPanel.SetActive(false);
+            resultPanel.SetActive(true);
+            resultText.text = $"<size=150%><b>Breakdown</b></size>\n\n{body}";
+            SetAccusationButtons(false);
+            guiltImage.gameObject.SetActive(false);
+
+            continueButton.GetComponentInChildren<TMP_Text>().text = "Restart";
+            continueButton.onClick.RemoveAllListeners();
+            continueButton.onClick.AddListener(RestartCurrentSuspect);
+            continueButton.gameObject.SetActive(true);
+        }
+
+        private void RestartCurrentSuspect()
+        {
+            SuspectDefinition suspect = Current;
+
+            // 只清除本次失败角色产生的证词，保留此前角色的审问结果。
+            records.RemoveAll(record => record.suspect == suspect.id);
+            tension[suspect.id] = suspect.initialTension;
+
+            // 恢复到进入该角色审问前的左轮使用状态，避免靠重开刷新次数。
+            revolverUsed = revolverUsedAtSuspectStart;
+            pendingSceneName = null;
+
+            continueButton.onClick.RemoveAllListeners();
+            continueButton.onClick.AddListener(LoadEndingScene);
+            continueButton.GetComponentInChildren<TMP_Text>().text = "Continue";
+            continueButton.gameObject.SetActive(false);
+
+            BeginSuspect(suspectIndex);
         }
 
         private TestimonyTruth TruthAt(int value)
@@ -545,7 +603,9 @@ namespace NoVerity.GameScene
 
         private void ClearEvidenceButtons()
         {
-            HideEvidenceTooltip();
+            CloseEvidenceDetail();
+            openedEvidence = null;
+            openedEvidenceButton = null;
             foreach (var b in evidenceButtons) if (b != null) Destroy(b.gameObject);
             evidenceButtons.Clear();
             evidenceButtonImages.Clear();
@@ -578,9 +638,15 @@ namespace NoVerity.GameScene
             button.transition = Selectable.Transition.None;
             evidenceButtonImages[button] = evidenceImage;
             SetEvidenceCardVisual(button, false);
-            button.onClick.AddListener(() => ToggleEvidence(evidence, button));
-            AddEvidenceHoverEvents(button, evidence);
+            button.onClick.AddListener(() => SelectEvidenceCard(evidence, button));
             evidenceButtons.Add(button);
+        }
+
+        private void SelectEvidenceCard(EvidenceDefinition evidence, Button button)
+        {
+            openedEvidence = evidence;
+            openedEvidenceButton = button;
+            ToggleEvidence(evidence, button);
         }
 
         private Sprite GetEvidenceSprite(EvidenceDefinition evidence)
@@ -599,90 +665,64 @@ namespace NoVerity.GameScene
             evidenceImage.color = isSelected ? selectedEvidenceTint : Color.white;
         }
 
-        private void AddEvidenceHoverEvents(Button button, EvidenceDefinition evidence)
+        private void OpenEvidenceDetail()
         {
-            EventTrigger trigger = button.gameObject.AddComponent<EventTrigger>();
+            if(drawn.Count == 0 || evidenceDetailPanel == null) return;
 
-            EventTrigger.Entry enterEntry = new EventTrigger.Entry {
-                eventID = EventTriggerType.PointerEnter
-            };
-            enterEntry.callback.AddListener(_ => ShowEvidenceTooltip(button, evidence));
-            trigger.triggers.Add(enterEntry);
+            int evidenceIndex = openedEvidence != null ? drawn.IndexOf(openedEvidence) : -1;
+            if(evidenceIndex < 0)
+                evidenceIndex = 0;
 
-            EventTrigger.Entry exitEntry = new EventTrigger.Entry {
-                eventID = EventTriggerType.PointerExit
-            };
-            exitEntry.callback.AddListener(_ =>
-                StartCoroutine(HideEvidenceTooltipWhenPointerLeaves(button)));
-            trigger.triggers.Add(exitEntry);
+            ShowEvidenceDetail(drawn[evidenceIndex], evidenceButtons[evidenceIndex]);
         }
 
-        private void ShowEvidenceTooltip(Button button, EvidenceDefinition evidence)
+        private void ShowEvidenceDetail(EvidenceDefinition evidence, Button sourceButton)
         {
-            if (evidenceTooltipPanel == null || evidenceTooltipText == null) return;
+            if(evidence == null || evidenceDetailPanel == null) return;
 
-            hoveredEvidenceButton = button;
-            string description = string.IsNullOrWhiteSpace(evidence.description)
+            Play(clickSound);
+            openedEvidence = evidence;
+            openedEvidenceButton = sourceButton;
+            evidenceDetailImage.sprite = GetEvidenceSprite(evidence);
+            evidenceDetailImage.color = evidenceDetailImage.sprite != null
+                ? Color.white : Color.clear;
+            evidenceDetailTitleText.text = evidence.title;
+            evidenceDetailText.text = string.IsNullOrWhiteSpace(evidence.description)
                 ? evidence.title : evidence.description;
-
-            if (evidenceTooltipTitleText != null)
-                evidenceTooltipTitleText.text = evidence.title;
-            SplitDescriptionForPages(description, out string leftDescription, out string rightDescription);
-            evidenceTooltipText.text = leftDescription;
-            if (evidenceTooltipRightText != null)
-                evidenceTooltipRightText.text = rightDescription;
-            evidenceTooltipPanel.SetActive(true);
-            evidenceTooltipPanel.transform.SetAsLastSibling();
+            UpdateEvidenceDetailSelectionButton();
+            evidenceDetailPanel.SetActive(true);
+            evidenceDetailPanel.transform.SetAsLastSibling();
         }
 
-        private IEnumerator HideEvidenceTooltipWhenPointerLeaves(Button sourceButton)
+        private void ChangeEvidenceDetail(int direction)
         {
-            // 给鼠标留出从证据图移动到介绍框的时间。
-            yield return new WaitForSecondsRealtime(.1f);
+            if(drawn.Count == 0) return;
 
-            bool overEvidence = sourceButton != null &&
-                RectTransformUtility.RectangleContainsScreenPoint(
-                    sourceButton.GetComponent<RectTransform>(), Input.mousePosition, null);
-            bool overTooltip = evidenceTooltipPanel != null && evidenceTooltipPanel.activeSelf &&
-                RectTransformUtility.RectangleContainsScreenPoint(
-                    evidenceTooltipPanel.GetComponent<RectTransform>(), Input.mousePosition, null);
-
-            if (!overEvidence && !overTooltip && hoveredEvidenceButton == sourceButton)
-                HideEvidenceTooltip();
+            int currentIndex = openedEvidence != null ? drawn.IndexOf(openedEvidence) : 0;
+            if(currentIndex < 0) currentIndex = 0;
+            int nextIndex = (currentIndex + direction + drawn.Count) % drawn.Count;
+            ShowEvidenceDetail(drawn[nextIndex], evidenceButtons[nextIndex]);
         }
 
-        private void HideEvidenceTooltip()
+        private void ToggleOpenedEvidence()
         {
-            hoveredEvidenceButton = null;
-            if (evidenceTooltipPanel != null)
-                evidenceTooltipPanel.SetActive(false);
+            if(openedEvidence == null || openedEvidenceButton == null) return;
+            ToggleEvidence(openedEvidence, openedEvidenceButton);
+            UpdateEvidenceDetailSelectionButton();
         }
 
-        private void SplitDescriptionForPages(string description, out string leftPage, out string rightPage)
+        private void UpdateEvidenceDetailSelectionButton()
         {
-            leftPage = description ?? string.Empty;
-            rightPage = string.Empty;
-            if (string.IsNullOrWhiteSpace(description)) return;
+            if(evidenceDetailSelectButton == null || openedEvidence == null) return;
+            bool isSelected = selectedEvidence.Contains(openedEvidence);
+            evidenceDetailSelectButton.GetComponentInChildren<TMP_Text>().text =
+                isSelected ? "Deselect Evidence" : "Select Evidence";
+        }
 
-            string[] words = description.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length < 2) return;
-
-            // 左页还要容纳标题，因此放约45%的正文，其余内容放在右页。
-            int targetLength = Mathf.RoundToInt(description.Length * .45f);
-            int currentLength = 0;
-            int splitIndex = 1;
-            for (int i = 0; i < words.Length; i++)
-            {
-                currentLength += words[i].Length + 1;
-                if (currentLength >= targetLength)
-                {
-                    splitIndex = Mathf.Clamp(i + 1, 1, words.Length - 1);
-                    break;
-                }
-            }
-
-            leftPage = string.Join(" ", words.Take(splitIndex));
-            rightPage = string.Join(" ", words.Skip(splitIndex));
+        private void CloseEvidenceDetail()
+        {
+            if(evidenceDetailPanel != null)
+                evidenceDetailPanel.SetActive(false);
         }
 
         private void BuildUI()
@@ -754,48 +794,66 @@ namespace NoVerity.GameScene
 
             dialogueScrollRect.verticalScrollbar = dialogueScrollbar;
             dialogueScrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
+
+            // 独立的证据详情入口固定在文本框右上角，不挂在证据图片上。
+            evidenceDetailOpenButton = MakeButton(dialoguePanel.transform,
+                "Evidence",new Vector2(180,58));
+            Anchor(evidenceDetailOpenButton.GetComponent<RectTransform>(),
+                new Vector2(.76f,.87f),new Vector2(.95f,.97f));
+            ApplyEvidenceDetailButtonSprite(evidenceDetailOpenButton);
+            evidenceDetailOpenButton.onClick.AddListener(OpenEvidenceDetail);
+
             evidenceRoot = MakePanel(interrogationPanel.transform,"EvidenceCards",new Vector2(.38f,.075f),new Vector2(.98f,.27f),Color.clear).transform;
             var layout=evidenceRoot.gameObject.AddComponent<HorizontalLayoutGroup>(); layout.spacing=20; layout.childAlignment=TextAnchor.MiddleCenter; layout.childForceExpandWidth=true; layout.childForceExpandHeight=true;
 
-            // 适配“笔记本.png”的约1.59:1宽高比，左页标题、右页介绍。
-            evidenceTooltipPanel = MakePanel(interrogationPanel.transform,"EvidenceTooltip",
-                new Vector2(.34f,.22f),new Vector2(.76f,.69f),new Color32(24,19,18,248));
-            ApplyUISprite(evidenceTooltipPanel.GetComponent<Image>(), evidenceTooltipUISprite,
-                new Color32(24,19,18,248));
+            // 点击证据后打开的详情界面：左侧大图，右侧标题和介绍。
+            evidenceDetailPanel = MakePanel(interrogationPanel.transform,"EvidenceDetailPanel",
+                new Vector2(.17f,.14f),new Vector2(.83f,.86f),new Color32(24,19,18,252));
+            ApplyUISprite(evidenceDetailPanel.GetComponent<Image>(), evidenceTooltipUISprite,
+                new Color32(24,19,18,252));
 
-            evidenceTooltipTitleText = MakeText(evidenceTooltipPanel.transform,"EvidenceTooltipTitle",
-                new Vector2(.07f,.67f),new Vector2(.44f,.85f),28,TextAlignmentOptions.Center);
-            evidenceTooltipTitleText.enableAutoSizing = true;
-            evidenceTooltipTitleText.fontSizeMin = 21;
-            evidenceTooltipTitleText.fontSizeMax = 28;
-            evidenceTooltipTitleText.fontStyle = FontStyles.Bold;
-            evidenceTooltipTitleText.color = evidenceTooltipUISprite != null ? brown : ink;
-            evidenceTooltipTitleText.raycastTarget = false;
+            evidenceDetailImage = MakeImage(evidenceDetailPanel.transform,"EvidenceDetailImage",
+                new Vector2(.06f,.18f),new Vector2(.47f,.84f));
+            evidenceDetailImage.preserveAspect = true;
+            evidenceDetailImage.type = Image.Type.Simple;
+            evidenceDetailImage.raycastTarget = false;
 
-            evidenceTooltipText = MakeText(evidenceTooltipPanel.transform,"EvidenceTooltipText",
-                new Vector2(.08f,.15f),new Vector2(.44f,.64f),22,TextAlignmentOptions.TopLeft);
-            evidenceTooltipText.enableAutoSizing = false;
-            evidenceTooltipText.fontSize = 22;
-            evidenceTooltipText.color = evidenceTooltipUISprite != null ? dark : ink;
-            evidenceTooltipText.raycastTarget = false;
+            evidenceDetailTitleText = MakeText(evidenceDetailPanel.transform,"EvidenceDetailTitle",
+                new Vector2(.52f,.72f),new Vector2(.94f,.88f),30,TextAlignmentOptions.TopLeft);
+            evidenceDetailTitleText.fontStyle = FontStyles.Bold;
+            evidenceDetailTitleText.color = evidenceTooltipUISprite != null ? brown : ink;
+            evidenceDetailTitleText.raycastTarget = false;
 
-            evidenceTooltipRightText = MakeText(evidenceTooltipPanel.transform,"EvidenceTooltipRightText",
-                new Vector2(.53f,.15f),new Vector2(.87f,.85f),22,TextAlignmentOptions.TopLeft);
-            evidenceTooltipRightText.enableAutoSizing = false;
-            evidenceTooltipRightText.fontSize = 22;
-            evidenceTooltipRightText.color = evidenceTooltipUISprite != null ? dark : ink;
-            evidenceTooltipRightText.raycastTarget = false;
+            evidenceDetailText = MakeText(evidenceDetailPanel.transform,"EvidenceDetailDescription",
+                new Vector2(.52f,.25f),new Vector2(.94f,.69f),22,TextAlignmentOptions.TopLeft);
+            evidenceDetailText.color = evidenceTooltipUISprite != null ? dark : ink;
+            evidenceDetailText.overflowMode = TextOverflowModes.Overflow;
+            evidenceDetailText.raycastTarget = false;
 
-            EventTrigger tooltipTrigger = evidenceTooltipPanel.AddComponent<EventTrigger>();
-            EventTrigger.Entry tooltipExit = new EventTrigger.Entry {
-                eventID = EventTriggerType.PointerExit
-            };
-            tooltipExit.callback.AddListener(_ => {
-                if (hoveredEvidenceButton != null)
-                    StartCoroutine(HideEvidenceTooltipWhenPointerLeaves(hoveredEvidenceButton));
-            });
-            tooltipTrigger.triggers.Add(tooltipExit);
-            evidenceTooltipPanel.SetActive(false);
+            evidenceDetailSelectButton = MakeButton(evidenceDetailPanel.transform,
+                "Select Evidence",new Vector2(240,56));
+            Anchor(evidenceDetailSelectButton.GetComponent<RectTransform>(),
+                new Vector2(.52f,.10f),new Vector2(.78f,.19f));
+            evidenceDetailSelectButton.onClick.AddListener(ToggleOpenedEvidence);
+
+            evidenceDetailPreviousButton = MakeButton(evidenceDetailPanel.transform,
+                "Previous",new Vector2(150,56));
+            Anchor(evidenceDetailPreviousButton.GetComponent<RectTransform>(),
+                new Vector2(.06f,.10f),new Vector2(.23f,.19f));
+            evidenceDetailPreviousButton.onClick.AddListener(() => ChangeEvidenceDetail(-1));
+
+            evidenceDetailNextButton = MakeButton(evidenceDetailPanel.transform,
+                "Next",new Vector2(150,56));
+            Anchor(evidenceDetailNextButton.GetComponent<RectTransform>(),
+                new Vector2(.29f,.10f),new Vector2(.46f,.19f));
+            evidenceDetailNextButton.onClick.AddListener(() => ChangeEvidenceDetail(1));
+
+            evidenceDetailCloseButton = MakeButton(evidenceDetailPanel.transform,
+                "Close",new Vector2(130,56));
+            Anchor(evidenceDetailCloseButton.GetComponent<RectTransform>(),
+                new Vector2(.80f,.10f),new Vector2(.94f,.19f));
+            evidenceDetailCloseButton.onClick.AddListener(CloseEvidenceDetail);
+            evidenceDetailPanel.SetActive(false);
 
             hintText = MakeText(interrogationPanel.transform,"Hint",new Vector2(.38f,.27f),new Vector2(.98f,.29f),14,TextAlignmentOptions.Center);
             confirmButton=MakeButton(interrogationPanel.transform,"Present Evidence",new Vector2(260,60)); Anchor(confirmButton.GetComponent<RectTransform>(),new Vector2(.84f,.01f),new Vector2(.98f,.065f)); confirmButton.onClick.AddListener(ConfirmEvidence);
@@ -811,7 +869,7 @@ namespace NoVerity.GameScene
 
             resultPanel=MakePanel(canvasGO.transform,"ResultPanel",new Vector2(.2f,.14f),new Vector2(.8f,.86f),dark);
             ApplyUISprite(resultPanel.GetComponent<Image>(), resultPanelUISprite, dark);
-            resultText=MakeText(resultPanel.transform,"ResultText",new Vector2(.08f,.34f),new Vector2(.92f,.92f),26,TextAlignmentOptions.TopLeft);
+            resultText=MakeText(resultPanel.transform,"ResultText",new Vector2(.08f,.36f),new Vector2(.92f,.92f),26,TextAlignmentOptions.TopLeft);
             guiltImage=MakeImage(resultPanel.transform,"GuiltStamp",new Vector2(.58f,.48f),new Vector2(.90f,.82f));
             guiltImage.sprite=guiltSprite;
             guiltImage.color=guiltSprite!=null?Color.white:Color.clear;
@@ -819,10 +877,13 @@ namespace NoVerity.GameScene
             guiltImage.preserveAspect=true;
             guiltImage.raycastTarget=false;
             guiltImage.gameObject.SetActive(false);
-            accuseA=MakeButton(resultPanel.transform,"Accuse Arthur",new Vector2(220,60)); Anchor(accuseA.GetComponent<RectTransform>(),new Vector2(.08f,.16f),new Vector2(.31f,.27f)); accuseA.onClick.AddListener(()=>Accuse(SuspectId.Arthur));
-            accuseC=MakeButton(resultPanel.transform,"Accuse Charles",new Vector2(220,60)); Anchor(accuseC.GetComponent<RectTransform>(),new Vector2(.385f,.16f),new Vector2(.615f,.27f)); accuseC.onClick.AddListener(()=>Accuse(SuspectId.Charles));
-            accuseB=MakeButton(resultPanel.transform,"Accuse Beatrice",new Vector2(220,60)); Anchor(accuseB.GetComponent<RectTransform>(),new Vector2(.69f,.16f),new Vector2(.92f,.27f)); accuseB.onClick.AddListener(()=>Accuse(SuspectId.Beatrice));
-            continueButton=MakeButton(resultPanel.transform,"Continue",new Vector2(180,52)); Anchor(continueButton.GetComponent<RectTransform>(),new Vector2(.39f,.04f),new Vector2(.61f,.12f)); continueButton.onClick.AddListener(LoadEndingScene); continueButton.gameObject.SetActive(false);
+            accuseA=MakeButton(resultPanel.transform,"Arthur",new Vector2(220,180)); Anchor(accuseA.GetComponent<RectTransform>(),new Vector2(.08f,.10f),new Vector2(.31f,.33f)); accuseA.onClick.AddListener(()=>Accuse(SuspectId.Arthur));
+            accuseC=MakeButton(resultPanel.transform,"Charles",new Vector2(220,180)); Anchor(accuseC.GetComponent<RectTransform>(),new Vector2(.385f,.10f),new Vector2(.615f,.33f)); accuseC.onClick.AddListener(()=>Accuse(SuspectId.Charles));
+            accuseB=MakeButton(resultPanel.transform,"Beatrice",new Vector2(220,180)); Anchor(accuseB.GetComponent<RectTransform>(),new Vector2(.69f,.10f),new Vector2(.92f,.33f)); accuseB.onClick.AddListener(()=>Accuse(SuspectId.Beatrice));
+            ApplyAccusationPortrait(accuseA, SuspectId.Arthur);
+            ApplyAccusationPortrait(accuseC, SuspectId.Charles);
+            ApplyAccusationPortrait(accuseB, SuspectId.Beatrice);
+            continueButton=MakeButton(resultPanel.transform,"Continue",new Vector2(180,52)); Anchor(continueButton.GetComponent<RectTransform>(),new Vector2(.39f,.02f),new Vector2(.61f,.08f)); continueButton.onClick.AddListener(LoadEndingScene); continueButton.gameObject.SetActive(false);
         }
 
         private GameObject MakePanel(Transform parent,string name,Vector2 min,Vector2 max,Color color)
@@ -842,6 +903,44 @@ namespace NoVerity.GameScene
             button.image.type=Image.Type.Simple;
             button.image.preserveAspect=true;
             button.image.color=Color.white;
+        }
+        private void ApplyEvidenceDetailButtonSprite(Button button)
+        {
+            if(button == null || evidenceDetailButtonSprite == null) return;
+
+            button.image.sprite = evidenceDetailButtonSprite;
+            button.image.type = Image.Type.Simple;
+            button.image.preserveAspect = true;
+            button.image.color = Color.white;
+
+            TMP_Text label = button.GetComponentInChildren<TMP_Text>();
+            if(label != null)
+                label.gameObject.SetActive(false);
+        }
+        private void ApplyAccusationPortrait(Button button, SuspectId suspectId)
+        {
+            if(button == null) return;
+            Sprite portrait = suspectId == SuspectId.Arthur ? arthurAccusationPortrait
+                : suspectId == SuspectId.Charles ? charlesAccusationPortrait
+                : beatriceAccusationPortrait;
+            if(portrait == null)
+                portrait = GetDefaultPortrait(suspectId);
+            if(portrait == null) return;
+
+            button.image.sprite = portrait;
+            button.image.type = Image.Type.Simple;
+            button.image.preserveAspect = true;
+            button.image.color = Color.white;
+
+            TMP_Text label = button.GetComponentInChildren<TMP_Text>();
+            if(label != null)
+            {
+                Anchor(label.rectTransform,new Vector2(.04f,.02f),new Vector2(.96f,.25f));
+                label.color = Color.white;
+                label.fontStyle = FontStyles.Bold;
+                label.outlineColor = Color.black;
+                label.outlineWidth = .18f;
+            }
         }
         private void Anchor(RectTransform r,Vector2 min,Vector2 max)
         { r.anchorMin=min; r.anchorMax=max; r.offsetMin=Vector2.zero; r.offsetMax=Vector2.zero; }

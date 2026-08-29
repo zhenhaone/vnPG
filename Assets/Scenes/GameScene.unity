@@ -241,6 +241,9 @@ MonoBehaviour:
       calmSprite: {fileID: 21300000, guid: a4c1691782154434188a6602d289e524, type: 3}
       revolverSprite: {fileID: 0}
       breakdownSprite: {fileID: 0}
+  arthurAccusationPortrait: {fileID: 21300000, guid: 6eff23165b335b74fbd253579d4b699c, type: 3}
+  charlesAccusationPortrait: {fileID: 21300000, guid: bdd54fa41cc5fa74db1fa34c94b1a0bb, type: 3}
+  beatriceAccusationPortrait: {fileID: 21300000, guid: 512cddfec68a792499334f424d7143d1, type: 3}
   evidenceSprites:
     A_W1: {fileID: 21300000, guid: 92b6868539a92854aa54494f6183bffb, type: 3}
     A_W2: {fileID: 21300000, guid: e9fc4556d4cda5241b19e52932dd7088, type: 3}
